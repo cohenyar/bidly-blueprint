@@ -14,6 +14,10 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as DevShowcaseRouteImport } from './routes/dev-showcase'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AppIndexRouteImport } from './routes/app.index'
+import { Route as AppRequestsIndexRouteImport } from './routes/app.requests.index'
+import { Route as AppRequestsNewRouteImport } from './routes/app.requests.new'
+import { Route as AppRequestsIdRouteImport } from './routes/app.requests.$id'
 
 const RegisterRoute = RegisterRouteImport.update({
   id: '/register',
@@ -40,40 +44,98 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppIndexRoute = AppIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppRequestsIndexRoute = AppRequestsIndexRouteImport.update({
+  id: '/requests/',
+  path: '/requests/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppRequestsNewRoute = AppRequestsNewRouteImport.update({
+  id: '/requests/new',
+  path: '/requests/new',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppRequestsIdRoute = AppRequestsIdRouteImport.update({
+  id: '/requests/$id',
+  path: '/requests/$id',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/app': typeof AppRoute
+  '/app': typeof AppRouteWithChildren
   '/dev-showcase': typeof DevShowcaseRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/app/': typeof AppIndexRoute
+  '/app/requests/$id': typeof AppRequestsIdRoute
+  '/app/requests/new': typeof AppRequestsNewRoute
+  '/app/requests/': typeof AppRequestsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/app': typeof AppRoute
   '/dev-showcase': typeof DevShowcaseRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/app': typeof AppIndexRoute
+  '/app/requests/$id': typeof AppRequestsIdRoute
+  '/app/requests/new': typeof AppRequestsNewRoute
+  '/app/requests': typeof AppRequestsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/app': typeof AppRoute
+  '/app': typeof AppRouteWithChildren
   '/dev-showcase': typeof DevShowcaseRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/app/': typeof AppIndexRoute
+  '/app/requests/$id': typeof AppRequestsIdRoute
+  '/app/requests/new': typeof AppRequestsNewRoute
+  '/app/requests/': typeof AppRequestsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/app' | '/dev-showcase' | '/login' | '/register'
+  fullPaths:
+    | '/'
+    | '/app'
+    | '/dev-showcase'
+    | '/login'
+    | '/register'
+    | '/app/'
+    | '/app/requests/$id'
+    | '/app/requests/new'
+    | '/app/requests/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/app' | '/dev-showcase' | '/login' | '/register'
-  id: '__root__' | '/' | '/app' | '/dev-showcase' | '/login' | '/register'
+  to:
+    | '/'
+    | '/dev-showcase'
+    | '/login'
+    | '/register'
+    | '/app'
+    | '/app/requests/$id'
+    | '/app/requests/new'
+    | '/app/requests'
+  id:
+    | '__root__'
+    | '/'
+    | '/app'
+    | '/dev-showcase'
+    | '/login'
+    | '/register'
+    | '/app/'
+    | '/app/requests/$id'
+    | '/app/requests/new'
+    | '/app/requests/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AppRoute: typeof AppRoute
+  AppRoute: typeof AppRouteWithChildren
   DevShowcaseRoute: typeof DevShowcaseRoute
   LoginRoute: typeof LoginRoute
   RegisterRoute: typeof RegisterRoute
@@ -116,12 +178,56 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/app/': {
+      id: '/app/'
+      path: '/'
+      fullPath: '/app/'
+      preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/requests/': {
+      id: '/app/requests/'
+      path: '/requests'
+      fullPath: '/app/requests/'
+      preLoaderRoute: typeof AppRequestsIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/requests/new': {
+      id: '/app/requests/new'
+      path: '/requests/new'
+      fullPath: '/app/requests/new'
+      preLoaderRoute: typeof AppRequestsNewRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/requests/$id': {
+      id: '/app/requests/$id'
+      path: '/requests/$id'
+      fullPath: '/app/requests/$id'
+      preLoaderRoute: typeof AppRequestsIdRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
+interface AppRouteChildren {
+  AppIndexRoute: typeof AppIndexRoute
+  AppRequestsIdRoute: typeof AppRequestsIdRoute
+  AppRequestsNewRoute: typeof AppRequestsNewRoute
+  AppRequestsIndexRoute: typeof AppRequestsIndexRoute
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppIndexRoute: AppIndexRoute,
+  AppRequestsIdRoute: AppRequestsIdRoute,
+  AppRequestsNewRoute: AppRequestsNewRoute,
+  AppRequestsIndexRoute: AppRequestsIndexRoute,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AppRoute: AppRoute,
+  AppRoute: AppRouteWithChildren,
   DevShowcaseRoute: DevShowcaseRoute,
   LoginRoute: LoginRoute,
   RegisterRoute: RegisterRoute,
