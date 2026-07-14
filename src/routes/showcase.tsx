@@ -12,7 +12,7 @@ import { OfferCard } from "@/components/app/OfferCard";
 import { RequestCard } from "@/components/app/RequestCard";
 import { HeroProductMock } from "@/components/app/HeroProductMock";
 
-export const Route = createFileRoute("/_showcase")({
+export const Route = createFileRoute("/showcase")({
   component: Showcase,
 });
 
