@@ -16,7 +16,7 @@ import { HeroProductMock } from "@/components/app/HeroProductMock";
  * Internal design showcase. Dev-only living design system reference.
  * Gated by `import.meta.env.DEV` — a 404 in production builds.
  */
-export const Route = createFileRoute("/_showcase")({
+export const Route = createFileRoute("/dev-showcase")({
   beforeLoad: () => {
     if (!import.meta.env.DEV) throw notFound();
   },
