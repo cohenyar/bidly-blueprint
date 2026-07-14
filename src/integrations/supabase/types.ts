@@ -333,6 +333,94 @@ export type Database = {
           },
         ]
       }
+      supplier_categories: {
+        Row: {
+          category_id: string
+          created_at: string
+          supplier_id: string
+        }
+        Insert: {
+          category_id: string
+          created_at?: string
+          supplier_id: string
+        }
+        Update: {
+          category_id?: string
+          created_at?: string
+          supplier_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_categories_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      supplier_profiles: {
+        Row: {
+          business_name: string
+          created_at: string
+          description: string
+          portfolio_links: string[]
+          service_area: string
+          starting_price_ils: number | null
+          updated_at: string
+          user_id: string
+          years_experience: number | null
+        }
+        Insert: {
+          business_name: string
+          created_at?: string
+          description?: string
+          portfolio_links?: string[]
+          service_area?: string
+          starting_price_ils?: number | null
+          updated_at?: string
+          user_id: string
+          years_experience?: number | null
+        }
+        Update: {
+          business_name?: string
+          created_at?: string
+          description?: string
+          portfolio_links?: string[]
+          service_area?: string
+          starting_price_ils?: number | null
+          updated_at?: string
+          user_id?: string
+          years_experience?: number | null
+        }
+        Relationships: []
+      }
+      supplier_subcategories: {
+        Row: {
+          created_at: string
+          subcategory_id: string
+          supplier_id: string
+        }
+        Insert: {
+          created_at?: string
+          subcategory_id: string
+          supplier_id: string
+        }
+        Update: {
+          created_at?: string
+          subcategory_id?: string
+          supplier_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_subcategories_subcategory_id_fkey"
+            columns: ["subcategory_id"]
+            isOneToOne: false
+            referencedRelation: "subcategories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
