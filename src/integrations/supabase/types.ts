@@ -14,6 +14,83 @@ export type Database = {
   }
   public: {
     Tables: {
+      categories: {
+        Row: {
+          created_at: string
+          icon: string | null
+          id: string
+          is_active: boolean
+          name_he: string
+          slug: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          name_he: string
+          slug: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          name_he?: string
+          slug?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      offers: {
+        Row: {
+          created_at: string
+          estimated_days: number
+          id: string
+          message: string
+          price: number
+          request_id: string
+          status: Database["public"]["Enums"]["offer_status"]
+          supplier_id: string
+          updated_at: string
+          withdrawn_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          estimated_days: number
+          id?: string
+          message: string
+          price: number
+          request_id: string
+          status?: Database["public"]["Enums"]["offer_status"]
+          supplier_id: string
+          updated_at?: string
+          withdrawn_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          estimated_days?: number
+          id?: string
+          message?: string
+          price?: number
+          request_id?: string
+          status?: Database["public"]["Enums"]["offer_status"]
+          supplier_id?: string
+          updated_at?: string
+          withdrawn_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offers_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           city: string | null
@@ -46,6 +123,164 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      request_attachments: {
+        Row: {
+          created_at: string
+          file_name: string
+          id: string
+          mime_type: string
+          request_id: string
+          size_bytes: number
+          storage_path: string
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          id?: string
+          mime_type: string
+          request_id: string
+          size_bytes: number
+          storage_path: string
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          id?: string
+          mime_type?: string
+          request_id?: string
+          size_bytes?: number
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "request_attachments_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      requests: {
+        Row: {
+          budget_max: number | null
+          budget_min: number | null
+          budget_type: Database["public"]["Enums"]["budget_type"]
+          category_id: string
+          city: string
+          closed_at: string | null
+          created_at: string
+          customer_id: string
+          description: string
+          id: string
+          offers_count: number
+          published_at: string
+          selected_offer_id: string | null
+          status: Database["public"]["Enums"]["request_status"]
+          subcategory_id: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          budget_max?: number | null
+          budget_min?: number | null
+          budget_type?: Database["public"]["Enums"]["budget_type"]
+          category_id: string
+          city: string
+          closed_at?: string | null
+          created_at?: string
+          customer_id: string
+          description: string
+          id?: string
+          offers_count?: number
+          published_at?: string
+          selected_offer_id?: string | null
+          status?: Database["public"]["Enums"]["request_status"]
+          subcategory_id?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          budget_max?: number | null
+          budget_min?: number | null
+          budget_type?: Database["public"]["Enums"]["budget_type"]
+          category_id?: string
+          city?: string
+          closed_at?: string | null
+          created_at?: string
+          customer_id?: string
+          description?: string
+          id?: string
+          offers_count?: number
+          published_at?: string
+          selected_offer_id?: string | null
+          status?: Database["public"]["Enums"]["request_status"]
+          subcategory_id?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "requests_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "requests_selected_offer_fk"
+            columns: ["selected_offer_id"]
+            isOneToOne: false
+            referencedRelation: "offers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "requests_subcategory_id_fkey"
+            columns: ["subcategory_id"]
+            isOneToOne: false
+            referencedRelation: "subcategories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subcategories: {
+        Row: {
+          category_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+          name_he: string
+          slug: string
+          sort_order: number
+        }
+        Insert: {
+          category_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name_he: string
+          slug: string
+          sort_order?: number
+        }
+        Update: {
+          category_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name_he?: string
+          slug?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subcategories_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
@@ -83,6 +318,9 @@ export type Database = {
     }
     Enums: {
       app_role: "customer" | "supplier" | "admin"
+      budget_type: "fixed" | "range" | "open"
+      offer_status: "submitted" | "withdrawn" | "selected" | "rejected"
+      request_status: "open" | "awarded" | "closed" | "cancelled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -211,6 +449,9 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["customer", "supplier", "admin"],
+      budget_type: ["fixed", "range", "open"],
+      offer_status: ["submitted", "withdrawn", "selected", "rejected"],
+      request_status: ["open", "awarded", "closed", "cancelled"],
     },
   },
 } as const
