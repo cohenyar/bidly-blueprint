@@ -152,6 +152,15 @@ function RequestDetailsPage() {
               </div>
             </Section>
 
+            <Section eyebrow="קבצים מצורפים" title="חומרים תומכים">
+              <div className="rounded-2xl border border-border bg-surface p-6 shadow-e1 sm:p-8">
+                <AttachmentUploader
+                  requestId={r.id}
+                  canEdit={r.status === "open"}
+                />
+              </div>
+            </Section>
+
             <Section eyebrow="הצעות ספקים" title="ההצעות שהתקבלו">
               <StateCard
                 icon={<Inbox className="h-5 w-5" strokeWidth={2.25} />}
