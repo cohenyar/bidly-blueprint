@@ -94,7 +94,6 @@ export function HeroProductMock({ className }: { className?: string }) {
 
         <div className="animate-[fadeRise_.6s_ease-out_both]" style={{ animationDelay: "360ms" }}>
           <OfferCard
-            compact
             selected
             supplier={{
               name: "אלה ברנד",
