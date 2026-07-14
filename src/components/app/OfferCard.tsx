@@ -54,12 +54,12 @@ export function OfferCard({
       )}
     >
       {recommended && !selected && (
-        <span className="absolute -top-2 inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary-foreground start-4">
+        <span className="absolute -top-2 inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-primary-foreground start-4 shadow-e1">
           מומלץ
         </span>
       )}
       {selected && (
-        <span className="absolute -top-2 inline-flex items-center gap-1 rounded-full bg-success px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-success-foreground start-4">
+        <span className="absolute -top-2 inline-flex items-center gap-1 rounded-full bg-success px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-success-foreground start-4 shadow-e1">
           <Check className="h-3 w-3" strokeWidth={3} />
           נבחר
         </span>
@@ -75,18 +75,15 @@ export function OfferCard({
 
       <div
         className={cn(
-          "mt-3 border-t border-border pt-3 gap-2",
-          compact
-            ? "flex flex-col items-start"
-            : "flex items-end justify-between gap-3",
+          "mt-3 border-t border-border pt-3 flex items-end justify-between gap-2",
         )}
       >
         <div className="flex items-baseline gap-1 min-w-0">
-          <span className="text-xs text-muted-foreground font-numeric">₪</span>
+          <span className="text-[11px] text-muted-foreground font-numeric">₪</span>
           <span
             className={cn(
               "font-numeric tabular-nums font-bold text-foreground leading-none tracking-tight",
-              compact ? "text-xl" : "text-3xl",
+              compact ? "text-[22px]" : "text-3xl",
             )}
           >
             {ilsFormatter.format(priceIls)}
@@ -97,6 +94,7 @@ export function OfferCard({
           value={deliveryDays}
           unit="ימים"
           tone={selected ? "success" : "neutral"}
+          className={compact ? "px-2 py-0.5 text-[11px]" : undefined}
         />
       </div>
     </article>
