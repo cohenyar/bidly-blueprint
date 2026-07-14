@@ -3,6 +3,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { LogOut } from "lucide-react";
 
 import { BidlyLogo } from "@/components/app/BidlyLogo";
+import { NotificationsBell } from "@/components/app/NotificationsBell";
 import { PageContainer } from "@/components/app/PageContainer";
 import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
@@ -39,6 +40,7 @@ export function WorkspaceHeader({ extra }: { extra?: ReactNode }) {
             <span className="hidden rounded-full border border-border bg-surface px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground sm:inline-flex">
               {roleLabel}
             </span>
+            <NotificationsBell />
             <button
               type="button"
               onClick={() => {

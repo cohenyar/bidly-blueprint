@@ -44,6 +44,57 @@ export type Database = {
         }
         Relationships: []
       }
+      notifications: {
+        Row: {
+          body: string | null
+          created_at: string
+          id: string
+          offer_id: string | null
+          read_at: string | null
+          request_id: string | null
+          title: string
+          type: Database["public"]["Enums"]["notification_type"]
+          user_id: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          offer_id?: string | null
+          read_at?: string | null
+          request_id?: string | null
+          title: string
+          type: Database["public"]["Enums"]["notification_type"]
+          user_id: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          offer_id?: string | null
+          read_at?: string | null
+          request_id?: string | null
+          title?: string
+          type?: Database["public"]["Enums"]["notification_type"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "offers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       offers: {
         Row: {
           created_at: string
@@ -319,6 +370,14 @@ export type Database = {
     Enums: {
       app_role: "customer" | "supplier" | "admin"
       budget_type: "fixed" | "range" | "open"
+      notification_type:
+        | "request_cancelled"
+        | "request_awarded"
+        | "request_closed"
+        | "offer_received"
+        | "offer_selected"
+        | "offer_rejected"
+        | "offer_withdrawn"
       offer_status: "submitted" | "withdrawn" | "selected" | "rejected"
       request_status: "open" | "awarded" | "closed" | "cancelled"
     }
@@ -450,6 +509,15 @@ export const Constants = {
     Enums: {
       app_role: ["customer", "supplier", "admin"],
       budget_type: ["fixed", "range", "open"],
+      notification_type: [
+        "request_cancelled",
+        "request_awarded",
+        "request_closed",
+        "offer_received",
+        "offer_selected",
+        "offer_rejected",
+        "offer_withdrawn",
+      ],
       offer_status: ["submitted", "withdrawn", "selected", "rejected"],
       request_status: ["open", "awarded", "closed", "cancelled"],
     },

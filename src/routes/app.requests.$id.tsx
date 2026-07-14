@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { ArrowRight, Ban, Inbox } from "lucide-react";
 
+import { AttachmentUploader } from "@/components/app/AttachmentUploader";
 import { PageContainer } from "@/components/app/PageContainer";
 import { Section } from "@/components/app/Section";
 import { ErrorState, LoadingState, StateCard } from "@/components/app/StateCard";
@@ -148,6 +149,15 @@ function RequestDetailsPage() {
                 <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-foreground">
                   {r.description}
                 </p>
+              </div>
+            </Section>
+
+            <Section eyebrow="קבצים מצורפים" title="חומרים תומכים">
+              <div className="rounded-2xl border border-border bg-surface p-6 shadow-e1 sm:p-8">
+                <AttachmentUploader
+                  requestId={r.id}
+                  canEdit={r.status === "open"}
+                />
               </div>
             </Section>
 
