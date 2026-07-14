@@ -1,7 +1,13 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
+import { ArrowLeft } from "lucide-react";
 
-import { AuthShell } from "@/components/app/AuthCard";
+import {
+  AuthShell,
+  AuthField,
+  authInputClass,
+  authSubmitClass,
+} from "@/components/app/AuthCard";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/register")({
@@ -55,12 +61,13 @@ function RegisterPage() {
 
   return (
     <AuthShell
-      title="פתיחת חשבון ב־Bidly"
+      eyebrow="הצטרפות למרחב"
+      title="פתיחת חשבון"
       subtitle="בחרו את סוג החשבון והתחילו לפרסם בקשות או להגיש הצעות."
       footer={
         <>
           כבר יש לכם חשבון?{" "}
-          <Link to="/login" className="font-medium text-primary hover:underline">
+          <Link to="/login" className="font-semibold text-primary hover:underline">
             כניסה
           </Link>
         </>
@@ -68,39 +75,39 @@ function RegisterPage() {
     >
       <form onSubmit={onSubmit} className="space-y-5">
         <fieldset>
-          <legend className="mb-2 text-sm font-medium text-foreground">
+          <legend className="mb-2 block text-[12px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
             אני נרשם/ת בתור
           </legend>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2.5">
             <RoleOption
               value="customer"
               current={role}
               onChange={setRole}
               title="לקוח"
-              desc="מחפש/ת שירות ורוצה לקבל הצעות"
+              desc="מפרסם בקשות"
             />
             <RoleOption
               value="supplier"
               current={role}
               onChange={setRole}
               title="בעל עסק"
-              desc="נותן/ת שירות ומגיש/ה הצעות"
+              desc="מגיש הצעות"
             />
           </div>
         </fieldset>
 
-        <Field label="שם מלא">
+        <AuthField label="שם מלא">
           <input
             type="text"
             required
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
             autoComplete="name"
-            className={inputClass}
+            className={authInputClass}
           />
-        </Field>
+        </AuthField>
 
-        <Field label="דוא״ל">
+        <AuthField label="דוא״ל">
           <input
             type="email"
             required
@@ -108,11 +115,11 @@ function RegisterPage() {
             onChange={(e) => setEmail(e.target.value)}
             autoComplete="email"
             dir="ltr"
-            className={`${inputClass} text-left`}
+            className={`${authInputClass} text-left`}
           />
-        </Field>
+        </AuthField>
 
-        <Field label="סיסמה" hint="לפחות 8 תווים.">
+        <AuthField label="סיסמה" hint="לפחות 8 תווים.">
           <input
             type="password"
             required
@@ -121,22 +128,19 @@ function RegisterPage() {
             onChange={(e) => setPassword(e.target.value)}
             autoComplete="new-password"
             dir="ltr"
-            className={`${inputClass} text-left`}
+            className={`${authInputClass} text-left`}
           />
-        </Field>
+        </AuthField>
 
         {error ? (
-          <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          <p className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-[13px] text-destructive">
             {error}
           </p>
         ) : null}
 
-        <button
-          type="submit"
-          disabled={submitting}
-          className="inline-flex h-11 w-full items-center justify-center rounded-md bg-primary text-sm font-semibold text-primary-foreground shadow-sm shadow-primary/20 transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
-        >
+        <button type="submit" disabled={submitting} className={authSubmitClass}>
           {submitting ? "רגע אחד…" : "יצירת חשבון"}
+          {!submitting ? <ArrowLeft className="h-4 w-4" /> : null}
         </button>
       </form>
     </AuthShell>
@@ -159,10 +163,10 @@ function RoleOption({
   const selected = value === current;
   return (
     <label
-      className={`cursor-pointer rounded-lg border p-3 transition-colors ${
+      className={`relative cursor-pointer rounded-lg border p-3 transition-all ${
         selected
-          ? "border-primary bg-primary/5 ring-1 ring-primary"
-          : "border-border bg-background hover:border-primary/40"
+          ? "request-spine-emerald border-primary bg-primary/[0.04] shadow-e1"
+          : "border-border bg-background hover:border-border-strong"
       }`}
     >
       <input
@@ -173,31 +177,12 @@ function RoleOption({
         onChange={() => onChange(value)}
         className="sr-only"
       />
-      <span className="block text-sm font-semibold text-foreground">{title}</span>
-      <span className="mt-1 block text-xs text-muted-foreground">{desc}</span>
-    </label>
-  );
-}
-
-const inputClass =
-  "block w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm placeholder:text-muted-foreground focus:border-ring focus:outline-none";
-
-function Field({
-  label,
-  hint,
-  children,
-}: {
-  label: string;
-  hint?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className="block">
-      <span className="mb-1 block text-sm font-medium text-foreground">{label}</span>
-      {children}
-      {hint ? (
-        <span className="mt-1 block text-xs text-muted-foreground">{hint}</span>
-      ) : null}
+      <span className="block text-[14px] font-semibold text-foreground">
+        {title}
+      </span>
+      <span className="mt-0.5 block text-[12px] text-muted-foreground">
+        {desc}
+      </span>
     </label>
   );
 }

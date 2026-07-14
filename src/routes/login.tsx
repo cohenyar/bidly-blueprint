@@ -1,7 +1,13 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
+import { ArrowLeft } from "lucide-react";
 
-import { AuthShell } from "@/components/app/AuthCard";
+import {
+  AuthShell,
+  AuthField,
+  authInputClass,
+  authSubmitClass,
+} from "@/components/app/AuthCard";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/login")({
@@ -42,20 +48,20 @@ function LoginPage() {
 
   return (
     <AuthShell
-      title="כניסה לחשבון"
-      subtitle="שמחים לראות אתכם שוב."
+      eyebrow="כניסה למרחב"
+      title="ברוכים השבים"
+      subtitle="המשיכו מהמקום שבו עצרתם."
       footer={
         <>
           אין לכם עדיין חשבון?{" "}
-          <Link to="/register" className="font-medium text-primary hover:underline">
-            הרשמה
+          <Link to="/register" className="font-semibold text-primary hover:underline">
+            פתיחת חשבון
           </Link>
         </>
       }
     >
       <form onSubmit={onSubmit} className="space-y-5">
-        <label className="block">
-          <span className="mb-1 block text-sm font-medium text-foreground">דוא״ל</span>
+        <AuthField label="דוא״ל">
           <input
             type="email"
             required
@@ -63,12 +69,11 @@ function LoginPage() {
             onChange={(e) => setEmail(e.target.value)}
             autoComplete="email"
             dir="ltr"
-            className="block w-full rounded-md border border-input bg-background px-3 py-2 text-left text-sm text-foreground shadow-sm focus:border-ring focus:outline-none"
+            className={`${authInputClass} text-left`}
           />
-        </label>
+        </AuthField>
 
-        <label className="block">
-          <span className="mb-1 block text-sm font-medium text-foreground">סיסמה</span>
+        <AuthField label="סיסמה">
           <input
             type="password"
             required
@@ -76,22 +81,19 @@ function LoginPage() {
             onChange={(e) => setPassword(e.target.value)}
             autoComplete="current-password"
             dir="ltr"
-            className="block w-full rounded-md border border-input bg-background px-3 py-2 text-left text-sm text-foreground shadow-sm focus:border-ring focus:outline-none"
+            className={`${authInputClass} text-left`}
           />
-        </label>
+        </AuthField>
 
         {error ? (
-          <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          <p className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-[13px] text-destructive">
             {error}
           </p>
         ) : null}
 
-        <button
-          type="submit"
-          disabled={submitting}
-          className="inline-flex h-11 w-full items-center justify-center rounded-md bg-primary text-sm font-semibold text-primary-foreground shadow-sm shadow-primary/20 transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {submitting ? "רגע אחד…" : "כניסה"}
+        <button type="submit" disabled={submitting} className={authSubmitClass}>
+          {submitting ? "רגע אחד…" : "כניסה למרחב"}
+          {!submitting ? <ArrowLeft className="h-4 w-4" /> : null}
         </button>
       </form>
     </AuthShell>
