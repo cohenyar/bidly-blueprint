@@ -72,9 +72,9 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   );
 }
 
-const SITE_TITLE = "Bidly — The Reverse Marketplace for Buyers";
+const SITE_TITLE = "Bidly — פרסמו בקשה, קבלו הצעות מספקים";
 const SITE_DESCRIPTION =
-  "Bidly flips procurement: customers publish what they need, and vetted suppliers compete with tailored offers. Compare bids side by side and pick the best fit.";
+  "Bidly היא זירת השירותים ההפוכה של ישראל: פרסמו בקשה אחת, קבלו הצעות ממגוון בעלי מקצוע מובחרים, השוו ובחרו את הספק המתאים ביותר עבורכם.";
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   head: () => ({
