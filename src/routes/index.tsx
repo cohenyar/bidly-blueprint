@@ -1,15 +1,14 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 
 import { PageContainer } from "@/components/app/PageContainer";
 import { BidlyLogo } from "@/components/app/BidlyLogo";
+import { formatCurrency } from "@/lib/i18n";
 
 export const Route = createFileRoute("/")({
   component: LandingPage,
   head: () => ({
-    meta: [
-      { property: "og:url", content: "/" },
-    ],
+    meta: [{ property: "og:url", content: "/" }],
     links: [{ rel: "canonical", href: "/" }],
   }),
 });
@@ -37,12 +36,12 @@ function SiteHeader() {
         <div className="flex h-16 items-center justify-between">
           <BidlyLogo />
           <nav className="flex items-center gap-2">
-            <CtaButton variant="secondary" disabled>
-              Login
-            </CtaButton>
-            <CtaButton variant="primary" disabled>
-              Create account
-            </CtaButton>
+            <Link to="/login" className={ctaClasses("secondary", "md")}>
+              כניסה
+            </Link>
+            <Link to="/register" className={ctaClasses("primary", "md")}>
+              פתיחת חשבון
+            </Link>
           </nav>
         </div>
       </PageContainer>
@@ -62,27 +61,27 @@ function Hero() {
           <div>
             <span className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1 text-xs font-medium text-muted-foreground">
               <span className="h-1.5 w-1.5 rounded-full bg-success" />
-              The reverse marketplace for procurement
+              זירת השירותים ההפוכה של ישראל
             </span>
             <h1 className="mt-6 text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
-              Post what you need.{" "}
-              <span className="text-primary">Let suppliers bid.</span>
+              פרסמו מה שאתם צריכים.{" "}
+              <span className="text-primary">תנו לספקים להתחרות.</span>
             </h1>
             <p className="mt-6 max-w-xl text-lg text-muted-foreground">
-              Bidly turns procurement on its head. Publish a request, receive
-              tailored offers from vetted suppliers, and compare them side by
-              side — all in one place.
+              ב־Bidly אתם מפרסמים בקשה אחת, מקבלים הצעות מותאמות אישית מבעלי
+              עסקים רלוונטיים, ובוחרים את ההצעה שהכי מתאימה לכם — הכול במקום
+              אחד, בעברית, ובמחירים בשקלים.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
-              <CtaButton variant="primary" size="lg" disabled>
-                Create account
-              </CtaButton>
-              <CtaButton variant="secondary" size="lg" disabled>
-                Login
-              </CtaButton>
+              <Link to="/register" className={ctaClasses("primary", "lg")}>
+                פתיחת חשבון
+              </Link>
+              <Link to="/login" className={ctaClasses("secondary", "lg")}>
+                כניסה
+              </Link>
             </div>
             <p className="mt-4 text-xs text-muted-foreground">
-              Free to join · No listing fees · Cancel anytime
+              חינם להצטרפות · ללא עמלת פרסום · אפשר לבטל בכל שלב
             </p>
           </div>
 
@@ -100,29 +99,31 @@ function HeroPreview() {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Request
+              בקשה
             </p>
             <h3 className="mt-1 text-lg font-semibold">
-              Office renovation · 240 m²
+              שיפוץ משרד · 120 מ״ר
             </h3>
           </div>
           <span className="rounded-full bg-info/15 px-2.5 py-1 text-xs font-medium text-info">
-            Open
+            פתוחה
           </span>
         </div>
         <div className="mt-5 space-y-3">
-          <OfferRow supplier="Norvia Interiors" price="€ 48,200" rating={4.9} highlighted />
-          <OfferRow supplier="Meridian Build Co." price="€ 51,900" rating={4.7} />
-          <OfferRow supplier="Atlas Contract Group" price="€ 54,300" rating={4.6} />
+          <OfferRow supplier="נורביה עיצוב פנים" price={48200} rating={4.9} highlighted />
+          <OfferRow supplier="מרידיאן בנייה" price={51900} rating={4.7} />
+          <OfferRow supplier="אטלס קבלנות" price={54300} rating={4.6} />
         </div>
         <div className="mt-6 flex items-center justify-between border-t border-border pt-4 text-xs text-muted-foreground">
-          <span>3 offers received</span>
-          <span className="tabular-nums">Best price € 48,200</span>
+          <span>3 הצעות התקבלו</span>
+          <span className="tabular-nums">
+            המחיר הנמוך ביותר {formatCurrency(48200)}
+          </span>
         </div>
       </div>
       <div
         aria-hidden="true"
-        className="absolute -bottom-6 -right-6 -z-10 h-40 w-40 rounded-full bg-primary/20 blur-3xl"
+        className="absolute -bottom-6 -left-6 -z-10 h-40 w-40 rounded-full bg-primary/20 blur-3xl"
       />
     </div>
   );
@@ -135,16 +136,14 @@ function OfferRow({
   highlighted = false,
 }: {
   supplier: string;
-  price: string;
+  price: number;
   rating: number;
   highlighted?: boolean;
 }) {
   return (
     <div
       className={`flex items-center justify-between rounded-lg border px-3 py-2.5 text-sm ${
-        highlighted
-          ? "border-primary/40 bg-primary/5"
-          : "border-border bg-background"
+        highlighted ? "border-primary/40 bg-primary/5" : "border-border bg-background"
       }`}
     >
       <div className="min-w-0">
@@ -153,7 +152,9 @@ function OfferRow({
           ★ {rating.toFixed(1)}
         </p>
       </div>
-      <span className="font-semibold text-foreground tabular-nums">{price}</span>
+      <span className="font-semibold text-foreground tabular-nums">
+        {formatCurrency(price)}
+      </span>
     </div>
   );
 }
@@ -161,16 +162,16 @@ function OfferRow({
 function ValueProposition() {
   const items = [
     {
-      title: "For customers",
-      body: "Describe what you need once. Sit back while qualified suppliers come to you with concrete, comparable proposals.",
+      title: "ללקוחות",
+      body: "מתארים פעם אחת מה צריך. בעלי מקצוע רלוונטיים מגיעים אליכם עם הצעות מפורטות ומדויקות שאפשר להשוות.",
     },
     {
-      title: "For suppliers",
-      body: "Stop chasing leads. Discover requests that fit your business and submit offers directly — no cold outreach required.",
+      title: "לבעלי עסקים",
+      body: "מפסיקים לרדוף אחרי לידים. מוצאים בקשות שמתאימות לכם, ומגישים הצעה ישירות — בלי שיחות קרות.",
     },
     {
-      title: "Transparent by design",
-      body: "Ratings, response times, and offer history stay visible so both sides can commit with confidence.",
+      title: "שקיפות מובנית",
+      body: "דירוגים, זמני מענה והיסטוריית הצעות גלויים לשני הצדדים, כדי שכולם יוכלו לבחור בביטחון.",
     },
   ];
 
@@ -178,8 +179,8 @@ function ValueProposition() {
     <section className="border-b border-border/60 py-20">
       <PageContainer>
         <SectionHeading
-          eyebrow="Why Bidly"
-          title="A marketplace built around what you actually need"
+          eyebrow="למה Bidly"
+          title="זירה שנבנתה סביב מה שאתם באמת צריכים"
         />
         <div className="mt-12 grid gap-6 md:grid-cols-3">
           {items.map((item) => (
@@ -197,18 +198,18 @@ function HowItWorks() {
   const steps = [
     {
       step: "01",
-      title: "Publish a request",
-      body: "Share your goal, budget, and timeline. Categorize it so the right suppliers see it.",
+      title: "פרסמו בקשה",
+      body: "שתפו מה אתם צריכים, מסגרת תקציב ולוח זמנים. בחרו קטגוריה כדי שהספקים הנכונים יראו אתכם.",
     },
     {
       step: "02",
-      title: "Receive tailored offers",
-      body: "Vetted suppliers respond with structured proposals — pricing, scope, and delivery.",
+      title: "קבלו הצעות מותאמות",
+      body: "בעלי עסקים מובחרים שולחים הצעות מפורטות — מחיר, היקף עבודה ולוחות זמנים.",
     },
     {
       step: "03",
-      title: "Compare & decide",
-      body: "Review offers side by side, check supplier ratings, and pick the one that fits.",
+      title: "השוו ובחרו",
+      body: "רואים את כל ההצעות זו לצד זו, בודקים דירוגים, ובוחרים את הספק המתאים ביותר.",
     },
   ];
 
@@ -216,8 +217,8 @@ function HowItWorks() {
     <section className="border-b border-border/60 bg-surface py-20">
       <PageContainer>
         <SectionHeading
-          eyebrow="How it works"
-          title="Three steps from need to signed deal"
+          eyebrow="איך זה עובד"
+          title="שלושה צעדים מבקשה לעסקה חתומה"
         />
         <ol className="mt-12 grid gap-6 md:grid-cols-3">
           {steps.map((s) => (
@@ -240,20 +241,20 @@ function HowItWorks() {
 
 function Benefits() {
   const benefits = [
-    "No listing fees for customers",
-    "Vetted supplier profiles",
-    "Structured offer comparison",
-    "Two-way ratings after each deal",
-    "In-app notifications on every update",
-    "Clear ownership of your data",
+    "ללא עמלות פרסום ללקוחות",
+    "פרופילי ספקים מאומתים",
+    "השוואת הצעות מובנית",
+    "דירוג הדדי לאחר כל עסקה",
+    "התראות בזמן אמת בתוך המערכת",
+    "בעלות מלאה על הנתונים שלכם",
   ];
 
   return (
     <section className="border-b border-border/60 py-20">
       <PageContainer>
         <SectionHeading
-          eyebrow="Benefits"
-          title="Built for procurement teams and independent suppliers alike"
+          eyebrow="יתרונות"
+          title="נבנה עבור לקוחות פרטיים, עסקים ובעלי מקצוע עצמאיים"
         />
         <ul className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {benefits.map((b) => (
@@ -265,11 +266,7 @@ function Benefits() {
                 aria-hidden="true"
                 className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-success/15 text-success"
               >
-                <svg
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                  className="h-3 w-3"
-                >
+                <svg viewBox="0 0 20 20" fill="currentColor" className="h-3 w-3">
                   <path
                     fillRule="evenodd"
                     d="M16.7 5.3a1 1 0 0 1 0 1.4l-8 8a1 1 0 0 1-1.4 0l-4-4a1 1 0 1 1 1.4-1.4L8 12.58l7.3-7.3a1 1 0 0 1 1.4 0Z"
@@ -294,20 +291,19 @@ function ClosingCta() {
           <div className="grid gap-8 md:grid-cols-[1.4fr_1fr] md:items-center">
             <div>
               <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-                Ready to let suppliers compete for your business?
+                מוכנים לתת לספקים להתחרות עליכם?
               </h2>
               <p className="mt-4 max-w-xl text-primary-foreground/80">
-                Create your Bidly account in minutes and publish your first
-                request today.
+                פתחו חשבון Bidly תוך דקות, ופרסמו את הבקשה הראשונה שלכם עוד היום.
               </p>
             </div>
             <div className="flex flex-wrap gap-3 md:justify-end">
-              <CtaButton variant="onPrimary" size="lg" disabled>
-                Create account
-              </CtaButton>
-              <CtaButton variant="onPrimaryOutline" size="lg" disabled>
-                Login
-              </CtaButton>
+              <Link to="/register" className={ctaClasses("onPrimary", "lg")}>
+                פתיחת חשבון
+              </Link>
+              <Link to="/login" className={ctaClasses("onPrimaryOutline", "lg")}>
+                כניסה
+              </Link>
             </div>
           </div>
         </div>
@@ -323,7 +319,7 @@ function SiteFooter() {
         <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
           <BidlyLogo />
           <p className="text-xs text-muted-foreground">
-            © {new Date().getFullYear()} Bidly. All rights reserved.
+            © {new Date().getFullYear()} Bidly. כל הזכויות שמורות.
           </p>
         </div>
       </PageContainer>
@@ -368,20 +364,8 @@ function FeatureCard({
 type CtaVariant = "primary" | "secondary" | "onPrimary" | "onPrimaryOutline";
 type CtaSize = "md" | "lg";
 
-function CtaButton({
-  children,
-  variant = "primary",
-  size = "md",
-  disabled = false,
-}: {
-  children: ReactNode;
-  variant?: CtaVariant;
-  size?: CtaSize;
-  disabled?: boolean;
-}) {
-  const sizeClasses =
-    size === "lg" ? "h-11 px-5 text-sm" : "h-9 px-4 text-sm";
-
+function ctaClasses(variant: CtaVariant, size: CtaSize): string {
+  const sizeClasses = size === "lg" ? "h-11 px-5 text-sm" : "h-9 px-4 text-sm";
   const variantClasses: Record<CtaVariant, string> = {
     primary:
       "bg-primary text-primary-foreground hover:bg-primary-hover shadow-sm shadow-primary/20",
@@ -392,16 +376,5 @@ function CtaButton({
     onPrimaryOutline:
       "bg-transparent text-primary-foreground border border-primary-foreground/40 hover:bg-primary-foreground/10",
   };
-
-  return (
-    <button
-      type="button"
-      disabled={disabled}
-      aria-disabled={disabled}
-      title={disabled ? "Available in the next phase" : undefined}
-      className={`inline-flex items-center justify-center rounded-md font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${sizeClasses} ${variantClasses[variant]}`}
-    >
-      {children}
-    </button>
-  );
+  return `inline-flex items-center justify-center rounded-md font-medium transition-colors ${sizeClasses} ${variantClasses[variant]}`;
 }
