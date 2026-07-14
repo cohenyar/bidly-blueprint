@@ -5,11 +5,11 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Bidly design system.
+ * Bidly design system — v2 "Procurement Command Center".
  *
- * Semantic tokens only. Never hardcode colors in components.
- * All colors use oklch. Radius scale is anchored on 0.5rem so
- * controls land at 8px and cards/dialogs at 12px per the UI spec.
+ * Trust Navy + Emerald on warm-cool white. Soft elevation.
+ * Semantic tokens only — never hardcode colors in components.
+ * Radius: controls 8 / cards 12 / dialogs 16.
  */
 
 @theme inline {
@@ -21,10 +21,15 @@
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
 
+  --font-sans: "Heebo", "Manrope", ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-numeric: "Manrope", "Heebo", ui-sans-serif, system-ui, sans-serif;
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-surface: var(--surface);
   --color-surface-foreground: var(--surface-foreground);
+  --color-surface-muted: var(--surface-muted);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-popover: var(--popover);
@@ -42,11 +47,19 @@
   --color-destructive-foreground: var(--destructive-foreground);
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
+  --color-success-soft: var(--success-soft);
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
+  --color-warning-soft: var(--warning-soft);
   --color-info: var(--info);
   --color-info-foreground: var(--info-foreground);
+  --color-info-soft: var(--info-soft);
+  --color-ai: var(--ai);
+  --color-ai-foreground: var(--ai-foreground);
+  --color-ai-soft: var(--ai-soft);
+  --color-ai-border: var(--ai-border);
   --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-ring-offset-background: var(--background);
@@ -58,113 +71,220 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+
+  --shadow-e1: 0 1px 2px rgb(15 23 42 / 0.04);
+  --shadow-e2: 0 4px 12px -4px rgb(15 23 42 / 0.08);
+  --shadow-e3: 0 12px 32px -12px rgb(15 23 42 / 0.14);
 }
 
 :root {
   --radius: 0.5rem;
 
-  --background: oklch(0.985 0.005 220);
-  --foreground: oklch(0.20 0.03 250);
+  /* Neutral surfaces */
+  --background: oklch(0.984 0.005 240);   /* #F8FAFC */
+  --foreground: oklch(0.208 0.042 265);   /* #0F172A */
 
-  --surface: oklch(1 0 0);
-  --surface-foreground: oklch(0.20 0.03 250);
+  --surface: oklch(1 0 0);                /* #FFFFFF */
+  --surface-foreground: oklch(0.208 0.042 265);
+  --surface-muted: oklch(0.968 0.007 240);/* #F1F5F9 */
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.20 0.03 250);
+  --card-foreground: oklch(0.208 0.042 265);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.20 0.03 250);
+  --popover-foreground: oklch(0.208 0.042 265);
 
-  --primary: oklch(0.50 0.16 250);
+  /* Brand — Trust Navy */
+  --primary: oklch(0.335 0.055 253);      /* #1E3A5F */
   --primary-foreground: oklch(0.99 0 0);
-  --primary-hover: oklch(0.44 0.16 250);
+  --primary-hover: oklch(0.285 0.055 253);/* #152C48 */
 
-  --secondary: oklch(0.96 0.01 250);
-  --secondary-foreground: oklch(0.25 0.03 250);
+  --secondary: oklch(0.968 0.007 240);
+  --secondary-foreground: oklch(0.278 0.045 265);
 
-  --muted: oklch(0.96 0.008 250);
-  --muted-foreground: oklch(0.50 0.02 250);
+  --muted: oklch(0.968 0.007 240);
+  --muted-foreground: oklch(0.505 0.026 257);/* slate-500-ish */
 
-  --accent: oklch(0.94 0.03 250);
-  --accent-foreground: oklch(0.25 0.05 250);
+  --accent: oklch(0.945 0.02 253);
+  --accent-foreground: oklch(0.278 0.045 265);
 
-  --destructive: oklch(0.58 0.22 27);
+  --destructive: oklch(0.505 0.19 27);       /* #B91C1C */
   --destructive-foreground: oklch(0.99 0 0);
 
-  --success: oklch(0.62 0.14 155);
+  --success: oklch(0.585 0.14 158);          /* #059669 emerald */
   --success-foreground: oklch(0.99 0 0);
+  --success-soft: oklch(0.972 0.03 158);     /* #ECFDF5 */
 
-  --warning: oklch(0.78 0.15 75);
-  --warning-foreground: oklch(0.22 0.05 75);
+  --warning: oklch(0.505 0.11 62);           /* #B45309 */
+  --warning-foreground: oklch(0.99 0 0);
+  --warning-soft: oklch(0.955 0.06 85);      /* #FEF3C7 */
 
-  --info: oklch(0.65 0.12 230);
+  --info: oklch(0.475 0.19 264);             /* #1D4ED8 */
   --info-foreground: oklch(0.99 0 0);
+  --info-soft: oklch(0.972 0.02 254);        /* #EFF6FF */
 
-  --border: oklch(0.91 0.01 250);
-  --input: oklch(0.91 0.01 250);
-  --ring: oklch(0.50 0.16 250);
+  /* AI — dedicated tinted surface */
+  --ai: oklch(0.435 0.18 275);               /* #4338CA */
+  --ai-foreground: oklch(0.99 0 0);
+  --ai-soft: oklch(0.965 0.025 275);         /* #EEF2FF */
+  --ai-border: oklch(0.855 0.06 275);        /* #C7D2FE */
 
-  --sidebar: oklch(0.99 0.003 250);
-  --sidebar-foreground: oklch(0.20 0.03 250);
-  --sidebar-primary: oklch(0.50 0.16 250);
+  --border: oklch(0.922 0.013 248);          /* #E2E8F0 */
+  --border-strong: oklch(0.855 0.02 250);    /* #CBD5E1 */
+  --input: oklch(0.922 0.013 248);
+  --ring: oklch(0.335 0.055 253);
+
+  --sidebar: oklch(1 0 0);
+  --sidebar-foreground: oklch(0.208 0.042 265);
+  --sidebar-primary: oklch(0.335 0.055 253);
   --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.94 0.02 250);
-  --sidebar-accent-foreground: oklch(0.25 0.03 250);
-  --sidebar-border: oklch(0.91 0.01 250);
-  --sidebar-ring: oklch(0.50 0.16 250);
+  --sidebar-accent: oklch(0.945 0.02 253);
+  --sidebar-accent-foreground: oklch(0.278 0.045 265);
+  --sidebar-border: oklch(0.922 0.013 248);
+  --sidebar-ring: oklch(0.335 0.055 253);
 }
 
 .dark {
-  --background: oklch(0.16 0.02 250);
+  --background: oklch(0.185 0.028 258);
   --foreground: oklch(0.97 0.005 250);
 
-  --surface: oklch(0.21 0.025 250);
+  --surface: oklch(0.235 0.03 258);
   --surface-foreground: oklch(0.97 0.005 250);
-  --card: oklch(0.21 0.025 250);
+  --surface-muted: oklch(0.275 0.03 258);
+  --card: oklch(0.235 0.03 258);
   --card-foreground: oklch(0.97 0.005 250);
-  --popover: oklch(0.21 0.025 250);
+  --popover: oklch(0.235 0.03 258);
   --popover-foreground: oklch(0.97 0.005 250);
 
-  --primary: oklch(0.68 0.15 250);
-  --primary-foreground: oklch(0.16 0.02 250);
-  --primary-hover: oklch(0.74 0.15 250);
+  --primary: oklch(0.72 0.10 253);
+  --primary-foreground: oklch(0.185 0.028 258);
+  --primary-hover: oklch(0.78 0.10 253);
 
-  --secondary: oklch(0.28 0.03 250);
+  --secondary: oklch(0.30 0.03 258);
   --secondary-foreground: oklch(0.97 0.005 250);
 
-  --muted: oklch(0.28 0.03 250);
-  --muted-foreground: oklch(0.72 0.02 250);
+  --muted: oklch(0.30 0.03 258);
+  --muted-foreground: oklch(0.72 0.02 258);
 
-  --accent: oklch(0.32 0.04 250);
+  --accent: oklch(0.335 0.04 258);
   --accent-foreground: oklch(0.97 0.005 250);
 
   --destructive: oklch(0.65 0.20 27);
   --destructive-foreground: oklch(0.99 0 0);
 
-  --success: oklch(0.70 0.14 155);
-  --success-foreground: oklch(0.16 0.02 250);
+  --success: oklch(0.70 0.14 158);
+  --success-foreground: oklch(0.185 0.028 258);
+  --success-soft: oklch(0.30 0.05 158);
 
   --warning: oklch(0.80 0.14 75);
   --warning-foreground: oklch(0.20 0.04 75);
+  --warning-soft: oklch(0.32 0.06 75);
 
-  --info: oklch(0.72 0.12 230);
-  --info-foreground: oklch(0.16 0.02 250);
+  --info: oklch(0.72 0.14 254);
+  --info-foreground: oklch(0.185 0.028 258);
+  --info-soft: oklch(0.30 0.05 254);
+
+  --ai: oklch(0.72 0.14 275);
+  --ai-foreground: oklch(0.185 0.028 258);
+  --ai-soft: oklch(0.30 0.05 275);
+  --ai-border: oklch(0.45 0.10 275);
 
   --border: oklch(1 0 0 / 12%);
+  --border-strong: oklch(1 0 0 / 20%);
   --input: oklch(1 0 0 / 16%);
-  --ring: oklch(0.68 0.15 250);
+  --ring: oklch(0.72 0.10 253);
 
-  --sidebar: oklch(0.21 0.025 250);
+  --sidebar: oklch(0.235 0.03 258);
   --sidebar-foreground: oklch(0.97 0.005 250);
-  --sidebar-primary: oklch(0.68 0.15 250);
-  --sidebar-primary-foreground: oklch(0.16 0.02 250);
-  --sidebar-accent: oklch(0.28 0.03 250);
+  --sidebar-primary: oklch(0.72 0.10 253);
+  --sidebar-primary-foreground: oklch(0.185 0.028 258);
+  --sidebar-accent: oklch(0.30 0.03 258);
   --sidebar-accent-foreground: oklch(0.97 0.005 250);
   --sidebar-border: oklch(1 0 0 / 12%);
-  --sidebar-ring: oklch(0.68 0.15 250);
+  --sidebar-ring: oklch(0.72 0.10 253);
 }
 
 @utility tabular-nums {
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
+}
+
+@utility font-numeric {
+  font-family: var(--font-numeric);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* Bidly signature: the Request Spine — a thin vertical rule on the
+ * inline-start edge of any request-related surface. Emerald + thicker
+ * on the selected/winning offer. */
+@utility request-spine {
+  position: relative;
+}
+@utility request-spine-navy {
+  position: relative;
+  &::before {
+    content: "";
+    position: absolute;
+    inset-inline-start: 0;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--color-primary);
+    border-start-start-radius: inherit;
+    border-end-start-radius: inherit;
+  }
+}
+@utility request-spine-emerald {
+  position: relative;
+  &::before {
+    content: "";
+    position: absolute;
+    inset-inline-start: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: var(--color-success);
+    border-start-start-radius: inherit;
+    border-end-start-radius: inherit;
+  }
+}
+
+/* AI surface — dedicated visual language for AI-suggested content. */
+@utility ai-surface {
+  background: var(--color-ai-soft);
+  border: 1px solid var(--color-ai-border);
+  border-radius: var(--radius-xl);
+  color: var(--color-foreground);
+}
+
+/* Elevation utilities */
+@utility shadow-e1 {
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.04);
+}
+@utility shadow-e2 {
+  box-shadow: 0 4px 12px -4px rgb(15 23 42 / 0.08);
+}
+@utility shadow-e3 {
+  box-shadow: 0 12px 32px -12px rgb(15 23 42 / 0.14);
+}
+
+/* Hero dotted background — confined to hero band, radial-masked. */
+@utility hero-dots {
+  background-image: radial-gradient(
+    circle at 1px 1px,
+    var(--color-border) 1px,
+    transparent 0
+  );
+  background-size: 32px 32px;
+  mask-image: radial-gradient(
+    ellipse at center,
+    black 40%,
+    transparent 78%
+  );
+  -webkit-mask-image: radial-gradient(
+    ellipse at center,
+    black 40%,
+    transparent 78%
+  );
 }
 
 @layer base {
@@ -173,8 +293,8 @@
   }
 
   html {
-    font-family: "Heebo", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
-      Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-family: "Heebo", "Manrope", ui-sans-serif, system-ui, -apple-system,
+      "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   }
 
   body {
@@ -182,6 +302,12 @@
     color: var(--color-foreground);
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+  }
+
+  h1,
+  h2,
+  h3 {
+    letter-spacing: -0.01em;
   }
 
   :focus-visible {
