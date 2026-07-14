@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "Supplier inserts own offer on open request" ON public.offers;
