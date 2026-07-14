@@ -11,6 +11,7 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { AuthProvider } from "../lib/auth-context";
 
 function NotFoundComponent() {
   return (
@@ -72,9 +73,9 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   );
 }
 
-const SITE_TITLE = "Bidly — The Reverse Marketplace for Buyers";
+const SITE_TITLE = "Bidly — פרסמו בקשה, קבלו הצעות מספקים";
 const SITE_DESCRIPTION =
-  "Bidly flips procurement: customers publish what they need, and vetted suppliers compete with tailored offers. Compare bids side by side and pick the best fit.";
+  "Bidly היא זירת השירותים ההפוכה של ישראל: פרסמו בקשה אחת, קבלו הצעות ממגוון בעלי מקצוע מובחרים, השוו ובחרו את הספק המתאים ביותר עבורכם.";
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   head: () => ({
@@ -105,7 +106,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800&display=swap",
       },
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
     ],
@@ -118,7 +119,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="he" dir="rtl">
       <head>
         <HeadContent />
       </head>
@@ -135,8 +136,10 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Outlet />
+      <AuthProvider>
+        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+        <Outlet />
+      </AuthProvider>
     </QueryClientProvider>
   );
 }
