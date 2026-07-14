@@ -73,13 +73,20 @@ export function OfferCard({
         size={compact ? "sm" : "md"}
       />
 
-      <div className="mt-3 flex items-end justify-between gap-3 border-t border-border pt-3">
+      <div
+        className={cn(
+          "mt-3 border-t border-border pt-3 gap-2",
+          compact
+            ? "flex flex-col items-start"
+            : "flex items-end justify-between gap-3",
+        )}
+      >
         <div className="flex items-baseline gap-1 min-w-0">
           <span className="text-xs text-muted-foreground font-numeric">₪</span>
           <span
             className={cn(
               "font-numeric tabular-nums font-bold text-foreground leading-none tracking-tight",
-              compact ? "text-2xl" : "text-3xl",
+              compact ? "text-xl" : "text-3xl",
             )}
           >
             {ilsFormatter.format(priceIls)}
