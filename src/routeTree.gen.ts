@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as DevShowcaseRouteImport } from './routes/dev-showcase'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as IndexRouteImport } from './routes/index'
 
@@ -22,6 +23,11 @@ const RegisterRoute = RegisterRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DevShowcaseRoute = DevShowcaseRouteImport.update({
+  id: '/dev-showcase',
+  path: '/dev-showcase',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppRoute = AppRouteImport.update({
@@ -38,12 +44,14 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/app': typeof AppRoute
+  '/dev-showcase': typeof DevShowcaseRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/app': typeof AppRoute
+  '/dev-showcase': typeof DevShowcaseRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
 }
@@ -51,20 +59,22 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/app': typeof AppRoute
+  '/dev-showcase': typeof DevShowcaseRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/app' | '/login' | '/register'
+  fullPaths: '/' | '/app' | '/dev-showcase' | '/login' | '/register'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/app' | '/login' | '/register'
-  id: '__root__' | '/' | '/app' | '/login' | '/register'
+  to: '/' | '/app' | '/dev-showcase' | '/login' | '/register'
+  id: '__root__' | '/' | '/app' | '/dev-showcase' | '/login' | '/register'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRoute
+  DevShowcaseRoute: typeof DevShowcaseRoute
   LoginRoute: typeof LoginRoute
   RegisterRoute: typeof RegisterRoute
 }
@@ -83,6 +93,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dev-showcase': {
+      id: '/dev-showcase'
+      path: '/dev-showcase'
+      fullPath: '/dev-showcase'
+      preLoaderRoute: typeof DevShowcaseRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/app': {
@@ -105,6 +122,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRoute,
+  DevShowcaseRoute: DevShowcaseRoute,
   LoginRoute: LoginRoute,
   RegisterRoute: RegisterRoute,
 }

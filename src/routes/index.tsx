@@ -82,37 +82,47 @@ function Hero() {
       <PageContainer>
         <div className="relative grid gap-10 py-14 lg:grid-cols-12 lg:gap-8 lg:py-20">
           {/* Narrative — 5 cols on lg (RTL: appears inline-start i.e. right) */}
-          <div className="lg:col-span-5 lg:pt-6">
-            <div className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.16em] text-primary">
-              <span className="h-1.5 w-1.5 rounded-full bg-success" />
+          <div className="lg:col-span-5 lg:pt-8">
+            <div className="inline-flex items-center gap-2 rounded-full border border-border bg-surface/70 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-primary shadow-e1">
+              <span className="relative inline-flex h-1.5 w-1.5">
+                <span className="absolute inline-flex h-full w-full rounded-full bg-success opacity-60 animate-ping" />
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-success" />
+              </span>
               זירת השירותים ההפוכה של ישראל
             </div>
-            <h1 className="mt-5 text-[32px] font-bold leading-[1.1] tracking-tight text-foreground sm:text-4xl lg:text-[44px] lg:leading-[1.08]">
+            <h1 className="mt-6 text-[34px] font-bold leading-[1.05] tracking-[-0.02em] text-foreground sm:text-[44px] lg:text-[52px] lg:leading-[1.02]">
               פרסמו בקשה אחת.
               <br />
-              <span className="text-primary">קבלו הצעות מהמובילים בתחום.</span>
+              <span className="text-primary">קבלו הצעות מהמובילים.</span>
             </h1>
-            <p className="mt-5 max-w-[46ch] text-[15px] leading-relaxed text-muted-foreground">
+            <p className="mt-5 max-w-[44ch] text-[15px] leading-relaxed text-muted-foreground sm:text-base">
               במקום לרדוף אחרי הצעות מחיר — בעלי מקצוע מובחרים שולחים לכם הצעות
               פרטיות, ואתם בוחרים את המתאים ביותר.
             </p>
-            <div className="mt-7 flex flex-wrap items-center gap-3">
-              <Link to="/register" className={ctaClasses("primary", "lg")}>
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+              <Link
+                to="/register"
+                className={ctaClasses("primary", "lg") + " w-full sm:w-auto"}
+              >
                 התחילו עכשיו — בחינם
                 <ArrowLeft className="h-4 w-4" />
               </Link>
-              <Link to="/register" className={ctaClasses("ghost", "lg")}>
+              <Link
+                to="/register"
+                className={ctaClasses("ghost", "lg") + " w-full sm:w-auto"}
+              >
                 אני ספק
               </Link>
             </div>
             {/* Trust strip directly under CTAs */}
-            <div className="mt-6 flex flex-wrap gap-2">
+            <div className="mt-7 flex flex-wrap gap-2">
               <StatPill icon={<ShieldCheck />} label="ללא עמלה לצרכן" />
               <StatPill icon={<Users />} label="1,200+ בעלי מקצוע" />
               <StatPill icon={<Zap />} label="הצעה ראשונה תוך שעה" />
               <StatPill icon={<Lock />} label="הצעות פרטיות" />
             </div>
           </div>
+
 
           {/* Product mock — 7 cols on lg. Visually dominant. */}
           <div className="lg:col-span-7">
@@ -366,18 +376,27 @@ function TrustTile({
   tone?: "neutral" | "success";
 }) {
   return (
-    <div className="rounded-xl border border-border bg-surface p-5 shadow-e1">
+    <div className="relative overflow-hidden rounded-xl border border-border bg-surface p-5 shadow-e1">
+      <span
+        aria-hidden
+        className={`absolute inset-x-0 top-0 h-px ${
+          tone === "success" ? "bg-success" : "bg-primary/40"
+        }`}
+      />
       <div
-        className={`font-numeric tabular-nums text-3xl font-bold leading-none tracking-tight ${
+        className={`font-numeric tabular-nums text-[32px] font-bold leading-none tracking-[-0.02em] ${
           tone === "success" ? "text-success" : "text-foreground"
         }`}
       >
         {value}
       </div>
-      <div className="mt-2 text-xs text-muted-foreground">{label}</div>
+      <div className="mt-2.5 text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+        {label}
+      </div>
     </div>
   );
 }
+
 
 /* ─────────────────────── Two sides ─────────────────────── */
 

@@ -22,16 +22,22 @@ export function HeroProductMock({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "relative rounded-2xl border border-border bg-surface p-5 sm:p-6 shadow-e3",
+        "relative rounded-2xl border border-border bg-surface p-4 sm:p-6 shadow-e3",
         className,
       )}
       dir="rtl"
     >
-      {/* connecting rail behind the stack */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-y-8 end-1/2 w-px bg-gradient-to-b from-primary/30 via-primary/10 to-success/30"
-      />
+      {/* window chrome — subtle "product surface" cue */}
+      <div className="mb-4 flex items-center justify-between border-b border-border pb-3">
+        <div className="flex items-center gap-1.5" aria-hidden>
+          <span className="h-2 w-2 rounded-full bg-border-strong" />
+          <span className="h-2 w-2 rounded-full bg-border-strong" />
+          <span className="h-2 w-2 rounded-full bg-border-strong" />
+        </div>
+        <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+          Bidly · תצוגה חיה
+        </span>
+      </div>
 
       <TimelineIndicator
         steps={[
@@ -41,8 +47,9 @@ export function HeroProductMock({ className }: { className?: string }) {
           { label: "נבחר" },
         ]}
         currentIndex={3}
-        className="mb-5"
+        className="mb-6"
       />
+
 
       <div className="space-y-3 relative">
         <div className="animate-[fadeRise_.6s_ease-out_both]" style={{ animationDelay: "0ms" }}>
@@ -60,10 +67,11 @@ export function HeroProductMock({ className }: { className?: string }) {
         </div>
 
         <div
-          className="grid grid-cols-3 gap-2 animate-[fadeRise_.6s_ease-out_both]"
+          className="grid grid-cols-3 gap-2.5 animate-[fadeRise_.6s_ease-out_both]"
           style={{ animationDelay: "120ms" }}
         >
           <OfferCard
+
             compact
             supplier={{ name: "סטודיו נורד", city: "תל אביב", rating: 4.7 }}
             priceIls={1800}
