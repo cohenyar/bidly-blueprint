@@ -9,16 +9,24 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SupplierRouteImport } from './routes/supplier'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as DevShowcaseRouteImport } from './routes/dev-showcase'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SupplierIndexRouteImport } from './routes/supplier.index'
 import { Route as AppIndexRouteImport } from './routes/app.index'
+import { Route as SupplierProfileRouteImport } from './routes/supplier.profile'
 import { Route as AppRequestsIndexRouteImport } from './routes/app.requests.index'
 import { Route as AppRequestsNewRouteImport } from './routes/app.requests.new'
 import { Route as AppRequestsIdRouteImport } from './routes/app.requests.$id'
 
+const SupplierRoute = SupplierRouteImport.update({
+  id: '/supplier',
+  path: '/supplier',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RegisterRoute = RegisterRouteImport.update({
   id: '/register',
   path: '/register',
@@ -44,10 +52,20 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SupplierIndexRoute = SupplierIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SupplierRoute,
+} as any)
 const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AppRoute,
+} as any)
+const SupplierProfileRoute = SupplierProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => SupplierRoute,
 } as any)
 const AppRequestsIndexRoute = AppRequestsIndexRouteImport.update({
   id: '/requests/',
@@ -71,7 +89,10 @@ export interface FileRoutesByFullPath {
   '/dev-showcase': typeof DevShowcaseRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/supplier': typeof SupplierRouteWithChildren
+  '/supplier/profile': typeof SupplierProfileRoute
   '/app/': typeof AppIndexRoute
+  '/supplier/': typeof SupplierIndexRoute
   '/app/requests/$id': typeof AppRequestsIdRoute
   '/app/requests/new': typeof AppRequestsNewRoute
   '/app/requests/': typeof AppRequestsIndexRoute
@@ -81,7 +102,9 @@ export interface FileRoutesByTo {
   '/dev-showcase': typeof DevShowcaseRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/supplier/profile': typeof SupplierProfileRoute
   '/app': typeof AppIndexRoute
+  '/supplier': typeof SupplierIndexRoute
   '/app/requests/$id': typeof AppRequestsIdRoute
   '/app/requests/new': typeof AppRequestsNewRoute
   '/app/requests': typeof AppRequestsIndexRoute
@@ -93,7 +116,10 @@ export interface FileRoutesById {
   '/dev-showcase': typeof DevShowcaseRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/supplier': typeof SupplierRouteWithChildren
+  '/supplier/profile': typeof SupplierProfileRoute
   '/app/': typeof AppIndexRoute
+  '/supplier/': typeof SupplierIndexRoute
   '/app/requests/$id': typeof AppRequestsIdRoute
   '/app/requests/new': typeof AppRequestsNewRoute
   '/app/requests/': typeof AppRequestsIndexRoute
@@ -106,7 +132,10 @@ export interface FileRouteTypes {
     | '/dev-showcase'
     | '/login'
     | '/register'
+    | '/supplier'
+    | '/supplier/profile'
     | '/app/'
+    | '/supplier/'
     | '/app/requests/$id'
     | '/app/requests/new'
     | '/app/requests/'
@@ -116,7 +145,9 @@ export interface FileRouteTypes {
     | '/dev-showcase'
     | '/login'
     | '/register'
+    | '/supplier/profile'
     | '/app'
+    | '/supplier'
     | '/app/requests/$id'
     | '/app/requests/new'
     | '/app/requests'
@@ -127,7 +158,10 @@ export interface FileRouteTypes {
     | '/dev-showcase'
     | '/login'
     | '/register'
+    | '/supplier'
+    | '/supplier/profile'
     | '/app/'
+    | '/supplier/'
     | '/app/requests/$id'
     | '/app/requests/new'
     | '/app/requests/'
@@ -139,10 +173,18 @@ export interface RootRouteChildren {
   DevShowcaseRoute: typeof DevShowcaseRoute
   LoginRoute: typeof LoginRoute
   RegisterRoute: typeof RegisterRoute
+  SupplierRoute: typeof SupplierRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/supplier': {
+      id: '/supplier'
+      path: '/supplier'
+      fullPath: '/supplier'
+      preLoaderRoute: typeof SupplierRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/register': {
       id: '/register'
       path: '/register'
@@ -178,12 +220,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/supplier/': {
+      id: '/supplier/'
+      path: '/'
+      fullPath: '/supplier/'
+      preLoaderRoute: typeof SupplierIndexRouteImport
+      parentRoute: typeof SupplierRoute
+    }
     '/app/': {
       id: '/app/'
       path: '/'
       fullPath: '/app/'
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
+    }
+    '/supplier/profile': {
+      id: '/supplier/profile'
+      path: '/profile'
+      fullPath: '/supplier/profile'
+      preLoaderRoute: typeof SupplierProfileRouteImport
+      parentRoute: typeof SupplierRoute
     }
     '/app/requests/': {
       id: '/app/requests/'
@@ -225,12 +281,27 @@ const AppRouteChildren: AppRouteChildren = {
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
+interface SupplierRouteChildren {
+  SupplierProfileRoute: typeof SupplierProfileRoute
+  SupplierIndexRoute: typeof SupplierIndexRoute
+}
+
+const SupplierRouteChildren: SupplierRouteChildren = {
+  SupplierProfileRoute: SupplierProfileRoute,
+  SupplierIndexRoute: SupplierIndexRoute,
+}
+
+const SupplierRouteWithChildren = SupplierRoute._addFileChildren(
+  SupplierRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
   DevShowcaseRoute: DevShowcaseRoute,
   LoginRoute: LoginRoute,
   RegisterRoute: RegisterRoute,
+  SupplierRoute: SupplierRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
