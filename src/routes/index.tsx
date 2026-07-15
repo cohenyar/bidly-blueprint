@@ -104,14 +104,14 @@ function Hero() {
                 to="/register"
                 className={ctaClasses("primary", "lg") + " w-full sm:w-auto"}
               >
-                התחילו עכשיו — בחינם
+                אני מקבל שירות
                 <ArrowLeft className="h-4 w-4" />
               </Link>
               <Link
                 to="/register"
                 className={ctaClasses("ghost", "lg") + " w-full sm:w-auto"}
               >
-                אני ספק
+                אני בעל מקצוע
               </Link>
             </div>
             {/* Trust strip directly under CTAs */}
