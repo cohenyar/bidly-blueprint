@@ -482,14 +482,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      _is_supplier_profile_complete: {
+        Args: { _supplier_id: string }
+        Returns: boolean
+      }
       admin_create_match: {
         Args: { _request_id: string; _supplier_id: string }
         Returns: string
       }
-      has_active_match: {
-        Args: { _request_id: string; _supplier_id: string }
-        Returns: boolean
-      }
+      has_active_match: { Args: { _request_id: string }; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -497,10 +498,7 @@ export type Database = {
         }
         Returns: boolean
       }
-      is_supplier_profile_complete: {
-        Args: { _supplier_id: string }
-        Returns: boolean
-      }
+      is_supplier_profile_complete: { Args: never; Returns: boolean }
     }
     Enums: {
       app_role: "customer" | "supplier" | "admin"
