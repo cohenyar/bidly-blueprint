@@ -515,7 +515,7 @@ function ClosingCta() {
                 מוכנים להתחיל
               </div>
               <h2 className="mt-3 text-3xl font-bold leading-tight tracking-tight text-foreground sm:text-4xl lg:text-[40px]">
-                תנו לספקים המובילים
+                תנו לבעלי מקצוע המובילים
                 <br />
                 <span className="text-primary">להתחרות עליכם.</span>
               </h2>
