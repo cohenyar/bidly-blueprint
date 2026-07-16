@@ -482,13 +482,53 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      _deactivate_matches_for_request: {
+        Args: { _request_id: string }
+        Returns: number
+      }
+      _deactivate_matches_for_supplier: {
+        Args: { _supplier_id: string }
+        Returns: number
+      }
+      _deactivate_matches_for_supplier_subcategory: {
+        Args: { _subcategory_id: string; _supplier_id: string }
+        Returns: number
+      }
+      _generate_matches_for_request: {
+        Args: { _request_id: string }
+        Returns: number
+      }
+      _generate_matches_for_supplier: {
+        Args: { _supplier_id: string }
+        Returns: number
+      }
+      _generate_matches_for_supplier_subcategory: {
+        Args: { _subcategory_id: string; _supplier_id: string }
+        Returns: number
+      }
       _is_supplier_profile_complete: {
         Args: { _supplier_id: string }
+        Returns: boolean
+      }
+      _notify_match_created: {
+        Args: { _request_id: string; _supplier_id: string }
+        Returns: undefined
+      }
+      _supplier_serves_subcategory: {
+        Args: { _subcategory_id: string; _supplier_id: string }
         Returns: boolean
       }
       admin_create_match: {
         Args: { _request_id: string; _supplier_id: string }
         Returns: string
+      }
+      admin_reconcile_matches: {
+        Args: never
+        Returns: {
+          created: number
+          deactivated: number
+          reactivated: number
+        }[]
       }
       has_active_match: { Args: { _request_id: string }; Returns: boolean }
       has_role: {
@@ -512,6 +552,7 @@ export type Database = {
         | "offer_selected"
         | "offer_rejected"
         | "offer_withdrawn"
+        | "match_created"
       offer_status: "submitted" | "withdrawn" | "selected" | "rejected"
       request_status: "open" | "awarded" | "closed" | "cancelled"
     }
@@ -652,6 +693,7 @@ export const Constants = {
         "offer_selected",
         "offer_rejected",
         "offer_withdrawn",
+        "match_created",
       ],
       offer_status: ["submitted", "withdrawn", "selected", "rejected"],
       request_status: ["open", "awarded", "closed", "cancelled"],
