@@ -512,7 +512,7 @@ function ClosingCta() {
           <div className="grid gap-8 lg:grid-cols-12 lg:items-center">
             <div className="lg:col-span-7">
               <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-primary">
-                מוכנים להתחיל
+                מוכנ להתחיל
               </div>
               <h2 className="mt-3 text-3xl font-bold leading-tight tracking-tight text-foreground sm:text-4xl lg:text-[40px]">
                 תנו לבעלי מקצוע המובילים
