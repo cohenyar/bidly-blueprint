@@ -39,9 +39,15 @@ export function AttachmentUploader({
       setUploadingName(file.name);
       try {
         await upload.mutateAsync(file);
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : "העלאה נכשלה";
-        setFailed((f) => [...f, { id: crypto.randomUUID(), file, error: msg }]);
+      } catch {
+        setFailed((f) => [
+          ...f,
+          {
+            id: crypto.randomUUID(),
+            file,
+            error: "העלאת הקובץ נכשלה. נסו שוב בעוד רגע.",
+          },
+        ]);
       } finally {
         setUploadingName(null);
       }
@@ -61,7 +67,7 @@ export function AttachmentUploader({
             ref={inputRef}
             type="file"
             multiple
-            accept="image/*,application/pdf"
+            accept="image/jpeg,image/png,image/webp,image/gif,application/pdf"
             className="sr-only"
             onChange={(e) => {
               if (e.target.files?.length) void handleFiles(e.target.files);
@@ -156,8 +162,8 @@ function AttachmentItem({
     try {
       const url = await getSignedUrl(att.storage_path);
       window.open(url, "_blank", "noopener,noreferrer");
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "לא ניתן לפתוח את הקובץ");
+    } catch {
+      alert("לא ניתן לפתוח את הקובץ כרגע.");
     }
   }
 
@@ -166,17 +172,11 @@ function AttachmentItem({
       <span className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-surface-muted text-primary">
         <Icon className="h-4 w-4" />
       </span>
-      <button
-        type="button"
-        onClick={open}
-        className="min-w-0 flex-1 text-start"
-      >
+      <button type="button" onClick={open} className="min-w-0 flex-1 text-start">
         <p className="truncate text-[13px] font-semibold text-foreground hover:text-primary">
           {att.file_name}
         </p>
-        <p className="truncate text-[11px] text-muted-foreground">
-          {formatSize(att.size_bytes)}
-        </p>
+        <p className="truncate text-[11px] text-muted-foreground">{formatSize(att.size_bytes)}</p>
       </button>
       {canEdit ? (
         <button

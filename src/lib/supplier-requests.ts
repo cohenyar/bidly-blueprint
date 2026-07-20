@@ -1,10 +1,10 @@
 /**
  * Service-provider request access for the Supplier workspace.
  *
- * Match rows are read first and restricted to `active`. Request reads are then
- * limited to those exact IDs. Supabase RLS remains the authorization boundary
- * for both queries; no unmatched marketplace data is fetched for client-side
- * filtering.
+ * A caller-scoped database function returns only active matched rows and only
+ * the request columns approved for the Supplier workspace. Suppliers have no
+ * direct SELECT policy on `requests`, so hidden customer/offer fields cannot be
+ * requested by bypassing this client module.
  */
 import { useQuery } from "@tanstack/react-query";
 
@@ -34,43 +34,38 @@ export type SupplierMatchedRequest = Pick<
   match_status: "active";
 };
 
-const APPROVED_REQUEST_FIELDS =
-  "id, title, description, city, budget_type, budget_min, budget_max, status, published_at, created_at, category:categories(id, name_he), subcategory:subcategories(id, name_he)" as const;
+type ActiveSupplierRequestRpcRow =
+  Database["public"]["Functions"]["get_active_supplier_requests"]["Returns"][number];
+
+function mapSupplierRequest(row: ActiveSupplierRequestRpcRow): SupplierMatchedRequest {
+  return {
+    id: row.id,
+    title: row.title,
+    description: row.description,
+    city: row.city,
+    budget_type: row.budget_type,
+    budget_min: row.budget_min,
+    budget_max: row.budget_max,
+    status: row.status,
+    published_at: row.published_at,
+    created_at: row.created_at,
+    category: { id: row.category_id, name_he: row.category_name_he },
+    subcategory:
+      row.subcategory_id && row.subcategory_name_he
+        ? { id: row.subcategory_id, name_he: row.subcategory_name_he }
+        : null,
+    match_created_at: row.match_created_at,
+    match_status: "active",
+  };
+}
 
 export function useActiveMatchedRequests() {
   return useQuery({
     queryKey: ["supplier-matched-requests", "active"],
     queryFn: async (): Promise<SupplierMatchedRequest[]> => {
-      const { data: matches, error: matchesError } = await supabase
-        .from("matches")
-        .select("request_id, created_at, status")
-        .eq("status", "active")
-        .order("created_at", { ascending: false });
-      if (matchesError) throw matchesError;
-      if (!matches?.length) return [];
-
-      const { data: requests, error: requestsError } = await supabase
-        .from("requests")
-        .select(APPROVED_REQUEST_FIELDS)
-        .in(
-          "id",
-          matches.map((match) => match.request_id),
-        );
-      if (requestsError) throw requestsError;
-
-      const requestsById = new Map((requests ?? []).map((request) => [request.id, request]));
-
-      return matches.flatMap((match) => {
-        const request = requestsById.get(match.request_id);
-        if (!request || match.status !== "active") return [];
-        return [
-          {
-            ...request,
-            match_created_at: match.created_at,
-            match_status: "active" as const,
-          },
-        ];
-      });
+      const { data, error } = await supabase.rpc("get_active_supplier_requests");
+      if (error) throw error;
+      return (data ?? []).map(mapSupplierRequest);
     },
   });
 }
@@ -80,28 +75,11 @@ export function useActiveMatchedRequest(id: string) {
     queryKey: ["supplier-matched-request", id],
     enabled: Boolean(id),
     queryFn: async (): Promise<SupplierMatchedRequest | null> => {
-      const { data: match, error: matchError } = await supabase
-        .from("matches")
-        .select("request_id, created_at, status")
-        .eq("request_id", id)
-        .eq("status", "active")
-        .maybeSingle();
-      if (matchError) throw matchError;
-      if (!match || match.status !== "active") return null;
-
-      const { data: request, error: requestError } = await supabase
-        .from("requests")
-        .select(APPROVED_REQUEST_FIELDS)
-        .eq("id", id)
-        .maybeSingle();
-      if (requestError) throw requestError;
-      if (!request) return null;
-
-      return {
-        ...request,
-        match_created_at: match.created_at,
-        match_status: "active",
-      };
+      const { data, error } = await supabase.rpc("get_active_supplier_requests", {
+        _request_id: id,
+      });
+      if (error) throw error;
+      return data?.[0] ? mapSupplierRequest(data[0]) : null;
     },
   });
 }

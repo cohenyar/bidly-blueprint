@@ -8,8 +8,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
-export type AttachmentRow =
-  Database["public"]["Tables"]["request_attachments"]["Row"];
+export type AttachmentRow = Database["public"]["Tables"]["request_attachments"]["Row"];
 
 export const BUCKET = "request-attachments";
 export const MAX_SIZE_BYTES = 15 * 1024 * 1024; // 15 MB
@@ -52,7 +51,7 @@ export function useUploadAttachment(requestId: string) {
       const { data: userRes, error: userErr } = await supabase.auth.getUser();
       if (userErr || !userRes.user) throw new Error("לא מחובר");
 
-      const safeName = file.name.replace(/[^\w.\-]+/g, "_");
+      const safeName = file.name.replace(/[^\w.-]+/g, "_");
       const path = `${userRes.user.id}/${requestId}/${crypto.randomUUID()}-${safeName}`;
 
       const up = await supabase.storage
@@ -83,12 +82,16 @@ export function useDeleteAttachment(requestId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (att: AttachmentRow) => {
-      const { error: delErr } = await supabase
+      const { error: storageError } = await supabase.storage
+        .from(BUCKET)
+        .remove([att.storage_path]);
+      if (storageError) throw storageError;
+
+      const { error: metadataError } = await supabase
         .from("request_attachments")
         .delete()
         .eq("id", att.id);
-      if (delErr) throw delErr;
-      await supabase.storage.from(BUCKET).remove([att.storage_path]);
+      if (metadataError) throw metadataError;
     },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["attachments", requestId] });
@@ -97,9 +100,7 @@ export function useDeleteAttachment(requestId: string) {
 }
 
 export async function getSignedUrl(path: string): Promise<string> {
-  const { data, error } = await supabase.storage
-    .from(BUCKET)
-    .createSignedUrl(path, 60 * 10);
+  const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60 * 10);
   if (error) throw error;
   return data.signedUrl;
 }

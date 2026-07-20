@@ -5,12 +5,7 @@ import { useMemo, useState } from "react";
 import { PageContainer } from "@/components/app/PageContainer";
 import { Section } from "@/components/app/Section";
 import { ErrorState } from "@/components/app/StateCard";
-import {
-  useCategories,
-  useCreateRequest,
-  useSubcategories,
-  type BudgetType,
-} from "@/lib/requests";
+import { useCategories, useCreateRequest, useSubcategories, type BudgetType } from "@/lib/requests";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/app/requests/new")({
@@ -18,10 +13,7 @@ export const Route = createFileRoute("/app/requests/new")({
   head: () => ({ meta: [{ title: "בקשה חדשה · Bidly" }] }),
 });
 
-type Errors = Partial<Record<
-  "title" | "description" | "city" | "category_id" | "budget",
-  string
->>;
+type Errors = Partial<Record<"title" | "description" | "city" | "category_id" | "budget", string>>;
 
 function CreateRequestPage() {
   const navigate = useNavigate();
@@ -55,7 +47,7 @@ function CreateRequestPage() {
         const hi = Number(budgetMax);
         if (!Number.isFinite(lo) || !Number.isFinite(hi) || lo <= 0 || hi <= 0)
           e.budget = "יש להזין טווח תקציב תקין.";
-        else if (lo > hi) e.budget = 'סכום מינ׳ גדול מסכום מקס׳.';
+        else if (lo > hi) e.budget = "סכום מינ׳ גדול מסכום מקס׳.";
       }
       return e;
     },
@@ -159,9 +151,7 @@ function CreateRequestPage() {
                     onChange={(e) => setSubcategoryId(e.target.value)}
                     disabled={!categoryId || subs.isPending}
                   >
-                    <option value="">
-                      {categoryId ? "ללא תת-תחום" : "בחרו תחום קודם"}
-                    </option>
+                    <option value="">{categoryId ? "ללא תת-תחום" : "בחרו תחום קודם"}</option>
                     {(subs.data ?? []).map((s) => (
                       <option key={s.id} value={s.id}>
                         {s.name_he}
@@ -214,6 +204,7 @@ function CreateRequestPage() {
                         key={opt.key}
                         type="button"
                         onClick={() => setBudgetType(opt.key)}
+                        aria-pressed={active}
                         className={cn(
                           "inline-flex h-9 items-center rounded-full border px-3.5 text-[12px] font-semibold",
                           active

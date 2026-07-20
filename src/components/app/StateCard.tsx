@@ -24,11 +24,7 @@ export function StateCard({
   className?: string;
 }) {
   const iconTone =
-    tone === "danger"
-      ? "text-danger"
-      : tone === "success"
-        ? "text-success"
-        : "text-primary";
+    tone === "danger" ? "text-danger" : tone === "success" ? "text-success" : "text-primary";
   return (
     <div
       role={tone === "danger" ? "alert" : undefined}
@@ -49,13 +45,9 @@ export function StateCard({
         <p className="mt-5 text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
           {eyebrow}
         </p>
-        <h3 className="mt-2 text-[20px] font-bold leading-snug text-foreground">
-          {title}
-        </h3>
+        <h3 className="mt-2 text-[20px] font-bold leading-snug text-foreground">{title}</h3>
         {body ? (
-          <div className="mt-3 text-[14px] leading-relaxed text-muted-foreground">
-            {body}
-          </div>
+          <div className="mt-3 text-[14px] leading-relaxed text-muted-foreground">{body}</div>
         ) : null}
         {action ? (
           <div className="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row">
@@ -77,13 +69,7 @@ export function LoadingState({ label = "טוען…" }: { label?: string }) {
   );
 }
 
-export function ErrorState({
-  error,
-  onRetry,
-}: {
-  error: unknown;
-  onRetry?: () => void;
-}) {
+export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
   const message =
     import.meta.env.DEV && error instanceof Error
       ? error.message

@@ -37,11 +37,7 @@ export function Section({
                 {eyebrow}
               </div>
             )}
-            {title && (
-              <h2 className="text-2xl font-bold text-foreground leading-tight">
-                {title}
-              </h2>
-            )}
+            {title && <h2 className="text-2xl font-bold text-foreground leading-tight">{title}</h2>}
           </div>
           {action && <div className="shrink-0">{action}</div>}
         </header>

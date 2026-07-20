@@ -38,23 +38,25 @@ export const Route = createFileRoute("/app/requests/$id")({
       </div>
     </PageContainer>
   ),
-  errorComponent: ({ error, reset }) => {
-    const router = useRouter();
-    return (
-      <PageContainer>
-        <div className="py-14">
-          <ErrorState
-            error={error}
-            onRetry={() => {
-              router.invalidate();
-              reset();
-            }}
-          />
-        </div>
-      </PageContainer>
-    );
-  },
+  errorComponent: RequestDetailsError,
 });
+
+function RequestDetailsError({ error, reset }: { error: Error; reset: () => void }) {
+  const router = useRouter();
+  return (
+    <PageContainer>
+      <div className="py-14">
+        <ErrorState
+          error={error}
+          onRetry={() => {
+            router.invalidate();
+            reset();
+          }}
+        />
+      </div>
+    </PageContainer>
+  );
+}
 
 function RequestDetailsPage() {
   const { id } = Route.useParams();
@@ -123,10 +125,7 @@ function RequestDetailsPage() {
               {r.subcategory ? ` · ${r.subcategory.name_he}` : ""}
             </span>
             <span
-              className={cn(
-                "text-[11px] font-semibold uppercase tracking-[0.14em]",
-                toneClass,
-              )}
+              className={cn("text-[11px] font-semibold uppercase tracking-[0.14em]", toneClass)}
             >
               · {REQUEST_STATUS_LABEL[r.status]}
             </span>
@@ -154,10 +153,7 @@ function RequestDetailsPage() {
 
             <Section eyebrow="קבצים מצורפים" title="חומרים תומכים">
               <div className="rounded-2xl border border-border bg-surface p-6 shadow-e1 sm:p-8">
-                <AttachmentUploader
-                  requestId={r.id}
-                  canEdit={r.status === "open"}
-                />
+                <AttachmentUploader requestId={r.id} canEdit={r.status === "open"} />
               </div>
             </Section>
 
@@ -188,8 +184,8 @@ function RequestDetailsPage() {
                   {cancel.isPending ? "מבטל…" : "ביטול הבקשה"}
                 </button>
                 {cancel.isError ? (
-                  <p className="text-[12px] text-danger">
-                    {(cancel.error as Error).message}
+                  <p role="alert" className="text-[12px] text-danger">
+                    ביטול הבקשה נכשל. נסו שוב בעוד רגע.
                   </p>
                 ) : null}
               </div>

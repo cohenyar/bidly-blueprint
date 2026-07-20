@@ -9,8 +9,6 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
 export type NotificationRow = Database["public"]["Tables"]["notifications"]["Row"];
-export type NotificationType = Database["public"]["Enums"]["notification_type"];
-
 export function useNotifications() {
   return useQuery({
     queryKey: ["notifications"],
