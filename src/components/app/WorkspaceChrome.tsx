@@ -10,11 +10,17 @@ import { cn } from "@/lib/utils";
 
 const ROLE_LABEL: Record<string, string> = {
   customer: "לקוח",
-  supplier: "בעל עסק",
+  supplier: "נותן שירות",
   admin: "מנהל מערכת",
 };
 
-export function WorkspaceHeader({ extra }: { extra?: ReactNode }) {
+export function WorkspaceHeader({
+  extra,
+  homeTo = "/app",
+}: {
+  extra?: ReactNode;
+  homeTo?: "/app" | "/supplier";
+}) {
   const navigate = useNavigate();
   const { role, signOut } = useAuth();
   const roleLabel = role ? ROLE_LABEL[role] : "משתמש";
@@ -25,7 +31,7 @@ export function WorkspaceHeader({ extra }: { extra?: ReactNode }) {
         <div className="grid h-14 grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
           <div className="flex min-w-0 items-center gap-3">
             <Link
-              to="/app"
+              to={homeTo}
               className="inline-flex focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 rounded-md"
             >
               <BidlyLogo />
@@ -40,7 +46,9 @@ export function WorkspaceHeader({ extra }: { extra?: ReactNode }) {
             <span className="hidden rounded-full border border-border bg-surface px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground sm:inline-flex">
               {roleLabel}
             </span>
-            <NotificationsBell />
+            <NotificationsBell
+              requestRoute={role === "supplier" ? "/supplier/requests/$id" : "/app/requests/$id"}
+            />
             <button
               type="button"
               onClick={() => {

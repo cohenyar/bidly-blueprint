@@ -25,9 +25,7 @@ export function ProfileCompletionPanel({ status }: { status: CompletionStatus })
             {complete ? "הפרופיל שלכם מוכן." : "השלימו את הפרופיל כדי לקבל התאמות."}
           </h3>
         </div>
-        <div className="text-[22px] font-bold text-foreground tabular-nums">
-          {status.percent}%
-        </div>
+        <div className="text-[22px] font-bold text-foreground tabular-nums">{status.percent}%</div>
       </div>
 
       <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-surface-muted">

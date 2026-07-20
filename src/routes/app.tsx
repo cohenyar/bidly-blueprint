@@ -14,15 +14,19 @@ export const Route = createFileRoute("/app")({
 
 function AppLayout() {
   const navigate = useNavigate();
-  const { user, loading } = useAuth();
+  const { user, role, loading } = useAuth();
 
   useEffect(() => {
     if (!loading && !user) {
       void navigate({ to: "/login" });
+      return;
     }
-  }, [loading, user, navigate]);
+    if (!loading && role === "supplier") {
+      void navigate({ to: "/supplier" });
+    }
+  }, [loading, user, role, navigate]);
 
-  if (loading || !user) return <WorkspaceSkeleton />;
+  if (loading || !user || role === "supplier") return <WorkspaceSkeleton />;
 
   return (
     <div className="min-h-screen bg-background text-foreground">

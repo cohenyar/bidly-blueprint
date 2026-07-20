@@ -1,0 +1,190 @@
+# HANDOFF TO HEPHAESTUS — BIDLY PRODUCT EXPANSION
+
+## Authority and timing
+
+This handoff defines product decisions for a future Bidly Product Expansion. It is not part of Supplier Phase Gate 6. Technical planning may begin only after Gate 6 closes and Odysseus Commander validates the expansion scope.
+
+Do not infer approval for SQL, schemas, migrations, API contracts, vendors, AI, or implementation choices from this document.
+
+## Approved product decisions
+
+### Marketplace boundary
+
+1. Bidly remains a private reverse marketplace.
+2. Customers publish Requests; Service Providers never browse unmatched Requests.
+3. Access remains based on an authorized Match, not public discovery, keywords alone, or location alone.
+4. Providers never see competing Offers or another provider's negotiation.
+5. User-facing workspace terminology uses `נותן שירות`; technical `supplier` identifiers remain unchanged.
+
+### Matching
+
+1. Every published Request has one Customer-confirmed primary Subcategory.
+2. Exact Subcategory remains the default and strongest eligibility rule.
+3. Free Request text may produce suggestions but never directly authorizes a Match.
+4. MVP uses manually curated keywords, synonyms, and controlled Tags.
+5. Tags rank exact eligible Matches.
+6. Tags may expand eligibility only through a product-approved, narrow, directional compatibility mapping to a specific Subcategory.
+7. Generic keywords cannot expand eligibility.
+8. Ambiguous Requests require Customer clarification or confirmation.
+9. AI classification is future scope and is not an MVP dependency.
+
+### Service Provider onboarding
+
+Matching eligibility requires:
+
+- Business type.
+- Controlled main profession.
+- Primary Category and exact primary Subcategory.
+- At least one controlled specialty/service.
+- Base city or general locality.
+- Service mode: on-site, remote, or both.
+- Structured service coverage for on-site work.
+- Maximum travel preference for on-site work.
+- Remote availability where relevant.
+- Business description.
+- Existing required account/profile fundamentals.
+
+Additional specialties, years of experience, starting price, portfolio, portfolio links, and precise travel radius are optional unless separately approved.
+
+Onboarding is progressive and resumable. Incomplete profiles receive no new Matches. Removing required eligibility data pauses matching and invalidates affected Matches. Removing a Category removes its dependent Subcategories and specialty Tags.
+
+### Location
+
+1. On-site Requests require a city.
+2. Area or neighborhood is optional and recommended in large cities.
+3. Exact address is optional at creation and private before acceptance.
+4. Remote Requests explicitly identify that no visit is required.
+5. Providers declare base locality, structured coverage, travel preference, and remote availability.
+6. Location filters providers outside declared coverage and ranks eligible providers by coverage fit.
+7. Location never independently authorizes access.
+8. Before acceptance, providers see only city and optional general area.
+9. Precise address is shared after acceptance only when needed and explicitly allowed by the Customer.
+
+### Portfolio
+
+1. Maximum 12 active items per provider.
+2. Maximum 6 images per item.
+3. Published items require title, description, Category, Subcategory, and at least one image.
+4. Completion month/year and privacy-safe broad location are optional.
+5. Supported MVP media: JPEG, PNG, and WebP, maximum 10 MB each.
+6. Portfolio is never publicly browseable.
+7. A Customer sees a contextual portfolio preview only after that provider submits an Offer to the Customer's Request.
+8. Providers may edit, reorder, unpublish, and delete their own items.
+9. Moderation must cover permission, personal information, faces, children, plates, documents, addresses, contact details, reporting, and takedown.
+10. AI moderation is not assumed.
+
+### Customer inbox
+
+1. Each Request is an inbox topic.
+2. The topic list prioritizes Customer action, unread negotiation responses, nearest deadline, and recent activity.
+3. A selected topic contains the Request summary, active Offers, provider summary, contextual portfolio, selected Offer negotiation, decision actions, and history.
+4. Expired, rejected, withdrawn, and non-winning Offers remain accessible in history.
+5. This does not create a public marketplace or general messaging inbox.
+
+### Acceptance and rejection
+
+1. Acceptance applies to the latest active version of one Offer.
+2. Acceptance awards the Request, closes negotiations, and makes other active Offers non-winning.
+3. Other providers receive a generic respectful outcome without competitor information.
+4. Rejection applies to one Offer/provider relationship, not the provider globally.
+5. Rejection reason and custom message are optional.
+6. Custom rejection messages are limited to 500 characters and are shown exactly to the provider if sent.
+7. Structured reasons are shared only with explicit Customer choice.
+8. Suggested polite Hebrew rejection messages are part of the experience.
+9. Rejection is final in MVP, closes negotiation, deactivates the Match for that pair, and suppresses automatic rematching for the same Request.
+10. Reopening rejection is future scope.
+
+### One Offer and revisions
+
+1. One logical Offer per Service Provider per Request remains approved.
+2. Negotiated revisions do not create competing Offers.
+3. Only the Service Provider may formally revise price or estimated days.
+4. A formal revision occurs only during the provider's negotiation response.
+5. Each revision is a new immutable version under the same logical Offer.
+6. Acceptance identifies the exact accepted version.
+7. Previous versions remain in private history.
+
+### Negotiation
+
+1. Negotiation is one private structured thread attached to one Offer.
+2. Participants are only the Request-owning Customer and Offer-owning Service Provider.
+3. It is turn-based, not general chat.
+4. Each participant sends at most one response during their active turn.
+5. Messages are final after sending and contain 10–2,000 characters.
+6. Customer messages may propose terms but cannot directly rewrite provider terms.
+7. MVP negotiation has no attachments.
+8. Acceptance, rejection, withdrawal, Request cancellation, award to another provider, or expiry closes the thread.
+9. Closed threads are read-only and preserved.
+10. Post-award fulfillment chat is out of scope.
+
+### Individual 48-hour lifecycle
+
+1. The first Customer timer starts at the exact submission time of that specific Offer.
+2. Each Offer has an independent timer; there is no Request-wide or first-Offer timer.
+3. Customer acceptance or rejection closes the timer.
+4. A Customer negotiation response ends the Customer turn and starts a fresh 48-hour provider turn.
+5. A provider response ends the provider turn and starts a fresh 48-hour Customer turn.
+6. Timers do not pause and negotiation does not reset the same participant's timer.
+7. One approaching-expiry reminder occurs at 12 hours remaining.
+8. Failure by the active participant to respond causes that Offer to expire.
+9. Expiry is terminal in MVP and cannot be reopened.
+10. Expiry hides the Offer from the active inbox but preserves it and its full timeline in history.
+11. Expiry affects only that provider/request relationship; other Offers and the Request continue.
+12. The Match for the expired pair becomes inactive and is not automatically regenerated for the same Request.
+13. Absolute 48-hour duration is preserved across timezone and daylight-saving changes; users see their configured local time, currently defaulting to Asia/Jerusalem.
+
+### Email
+
+Mandatory direct or terminal emails:
+
+- Provider: accepted, rejected, expired, and direct Customer negotiation response.
+- Customer: acceptance confirmation, expired unresolved Customer turn, and direct provider negotiation response.
+
+Configurable default-on emails:
+
+- Customer: new Offer and expiration reminder.
+- Provider: new Match and expiration reminder.
+
+Rules:
+
+1. Direct and terminal events send individually.
+2. New Matches may use immediate or daily-digest preference.
+3. At most one expiry reminder is sent per response turn.
+4. Optional emails support unsubscribe/preferences; mandatory transactional wording requires legal review.
+5. Emails contain minimum safe context and an authenticated deep link.
+6. Emails never contain exact addresses, attachments, full private messages, phone numbers, or competing Offer details.
+7. Email failure does not pause timers, change status, or block in-app activity.
+8. Temporary failures are retried and persistent failures are operationally visible.
+9. No email provider is selected.
+
+### Match and history lifecycle
+
+1. Matches remain separate from Offer status.
+2. A Match is active only while the Request is eligible, the provider remains eligible, coverage remains compatible, and the provider/request pair is non-terminal.
+3. Request award, cancellation, or closure deactivates affected Matches under existing lifecycle principles.
+4. Individual Offer rejection or expiry deactivates and suppresses that pair without affecting other Matches.
+5. A provider may retain access to their own Offer history after Request-detail access ends.
+6. Request details and attachments are no longer visible to that provider after Match access ends.
+7. No expired, rejected, or revised Offer history is hard-deleted.
+
+## MVP boundary
+
+Expansion MVP includes controlled Tags, deterministic keyword suggestions, onboarding, structured location coverage, private portfolio, Request-topic inbox, accept/reject, transactional email, turn-based negotiation, immutable Offer versions, independent 48-hour turns, expiry, and history.
+
+Expansion MVP excludes AI classification, AI moderation, exact travel-time ranking, negotiation attachments, reopening terminal Offers, general chat, post-award messaging, payments, ratings, reviews, analytics features, and public provider discovery.
+
+## Required planning guardrails
+
+Technical planning must demonstrate that:
+
+- Free text, Tags, and location cannot bypass Match authorization.
+- Tag expansion is curated and bounded.
+- One logical Offer remains enforceable across versions.
+- Every deadline belongs to one Offer turn and has an auditable origin.
+- Rejected and expired pair suppression cannot be undone by ordinary rematching.
+- Request/attachment access ends when the pair's Match ends, while own Offer history remains available.
+- Competing Offers and private negotiation remain isolated.
+- Email is supplementary and privacy-safe.
+- Existing Hebrew RTL and approved design language remain.
+
+Stop technical planning and return to product review if any of these decisions cannot be represented without creating an open marketplace, uncontrolled location authorization, general chat, competing-Offer exposure, or AI dependency.

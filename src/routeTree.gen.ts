@@ -19,6 +19,7 @@ import { Route as SupplierIndexRouteImport } from './routes/supplier.index'
 import { Route as AppIndexRouteImport } from './routes/app.index'
 import { Route as SupplierProfileRouteImport } from './routes/supplier.profile'
 import { Route as AppRequestsIndexRouteImport } from './routes/app.requests.index'
+import { Route as SupplierRequestsIdRouteImport } from './routes/supplier.requests.$id'
 import { Route as AppRequestsNewRouteImport } from './routes/app.requests.new'
 import { Route as AppRequestsIdRouteImport } from './routes/app.requests.$id'
 
@@ -72,6 +73,11 @@ const AppRequestsIndexRoute = AppRequestsIndexRouteImport.update({
   path: '/requests/',
   getParentRoute: () => AppRoute,
 } as any)
+const SupplierRequestsIdRoute = SupplierRequestsIdRouteImport.update({
+  id: '/requests/$id',
+  path: '/requests/$id',
+  getParentRoute: () => SupplierRoute,
+} as any)
 const AppRequestsNewRoute = AppRequestsNewRouteImport.update({
   id: '/requests/new',
   path: '/requests/new',
@@ -95,6 +101,7 @@ export interface FileRoutesByFullPath {
   '/supplier/': typeof SupplierIndexRoute
   '/app/requests/$id': typeof AppRequestsIdRoute
   '/app/requests/new': typeof AppRequestsNewRoute
+  '/supplier/requests/$id': typeof SupplierRequestsIdRoute
   '/app/requests/': typeof AppRequestsIndexRoute
 }
 export interface FileRoutesByTo {
@@ -107,6 +114,7 @@ export interface FileRoutesByTo {
   '/supplier': typeof SupplierIndexRoute
   '/app/requests/$id': typeof AppRequestsIdRoute
   '/app/requests/new': typeof AppRequestsNewRoute
+  '/supplier/requests/$id': typeof SupplierRequestsIdRoute
   '/app/requests': typeof AppRequestsIndexRoute
 }
 export interface FileRoutesById {
@@ -122,6 +130,7 @@ export interface FileRoutesById {
   '/supplier/': typeof SupplierIndexRoute
   '/app/requests/$id': typeof AppRequestsIdRoute
   '/app/requests/new': typeof AppRequestsNewRoute
+  '/supplier/requests/$id': typeof SupplierRequestsIdRoute
   '/app/requests/': typeof AppRequestsIndexRoute
 }
 export interface FileRouteTypes {
@@ -138,6 +147,7 @@ export interface FileRouteTypes {
     | '/supplier/'
     | '/app/requests/$id'
     | '/app/requests/new'
+    | '/supplier/requests/$id'
     | '/app/requests/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -150,6 +160,7 @@ export interface FileRouteTypes {
     | '/supplier'
     | '/app/requests/$id'
     | '/app/requests/new'
+    | '/supplier/requests/$id'
     | '/app/requests'
   id:
     | '__root__'
@@ -164,6 +175,7 @@ export interface FileRouteTypes {
     | '/supplier/'
     | '/app/requests/$id'
     | '/app/requests/new'
+    | '/supplier/requests/$id'
     | '/app/requests/'
   fileRoutesById: FileRoutesById
 }
@@ -248,6 +260,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRequestsIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/supplier/requests/$id': {
+      id: '/supplier/requests/$id'
+      path: '/requests/$id'
+      fullPath: '/supplier/requests/$id'
+      preLoaderRoute: typeof SupplierRequestsIdRouteImport
+      parentRoute: typeof SupplierRoute
+    }
     '/app/requests/new': {
       id: '/app/requests/new'
       path: '/requests/new'
@@ -284,11 +303,13 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 interface SupplierRouteChildren {
   SupplierProfileRoute: typeof SupplierProfileRoute
   SupplierIndexRoute: typeof SupplierIndexRoute
+  SupplierRequestsIdRoute: typeof SupplierRequestsIdRoute
 }
 
 const SupplierRouteChildren: SupplierRouteChildren = {
   SupplierProfileRoute: SupplierProfileRoute,
   SupplierIndexRoute: SupplierIndexRoute,
+  SupplierRequestsIdRoute: SupplierRequestsIdRoute,
 }
 
 const SupplierRouteWithChildren = SupplierRoute._addFileChildren(
@@ -306,3 +327,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
