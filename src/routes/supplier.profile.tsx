@@ -6,7 +6,7 @@ import { SupplierProfileForm } from "@/components/app/SupplierProfileForm";
 
 export const Route = createFileRoute("/supplier/profile")({
   component: SupplierProfilePage,
-  head: () => ({ meta: [{ title: "פרופיל ספק · Bidly" }] }),
+  head: () => ({ meta: [{ title: "פרופיל נותן שירות · Bidly" }] }),
 });
 
 function SupplierProfilePage() {
@@ -18,13 +18,13 @@ function SupplierProfilePage() {
           className="inline-flex items-center gap-1 text-[12px] font-semibold text-muted-foreground hover:text-foreground"
         >
           <ArrowRight className="h-3.5 w-3.5" />
-          חזרה למרחב הספק
+          חזרה למרחב נותן השירות
         </Link>
 
         <div className="request-spine-navy mt-6 ps-5">
           <span className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.18em] text-primary">
             <span className="h-px w-6 bg-primary" aria-hidden />
-            פרופיל ספק
+            פרופיל נותן שירות
           </span>
           <h1 className="mt-3 text-[26px] font-bold leading-tight tracking-[-0.01em] text-foreground sm:text-[32px]">
             פרטי העסק והתחומים שלכם

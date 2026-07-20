@@ -8,10 +8,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
-export type NotificationRow =
-  Database["public"]["Tables"]["notifications"]["Row"];
-export type NotificationType =
-  Database["public"]["Enums"]["notification_type"];
+export type NotificationRow = Database["public"]["Tables"]["notifications"]["Row"];
+export type NotificationType = Database["public"]["Enums"]["notification_type"];
 
 export function useNotifications() {
   return useQuery({
@@ -28,11 +26,6 @@ export function useNotifications() {
     refetchOnWindowFocus: true,
     refetchInterval: 60_000,
   });
-}
-
-export function useUnreadCount() {
-  const q = useNotifications();
-  return (q.data ?? []).filter((n) => !n.read_at).length;
 }
 
 export function useMarkNotificationRead() {
@@ -71,9 +64,10 @@ export function useNotificationsRealtime() {
   const qc = useQueryClient();
   useEffect(() => {
     let cancelled = false;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
     void supabase.auth.getUser().then(({ data }) => {
       if (cancelled || !data.user) return;
-      const channel = supabase
+      channel = supabase
         .channel(`notif-${data.user.id}`)
         .on(
           "postgres_changes",
@@ -83,15 +77,21 @@ export function useNotificationsRealtime() {
             table: "notifications",
             filter: `user_id=eq.${data.user.id}`,
           },
-          () => qc.invalidateQueries({ queryKey: ["notifications"] }),
+          (payload) => {
+            void qc.invalidateQueries({ queryKey: ["notifications"] });
+            const notification = payload.new as Partial<NotificationRow>;
+            if (notification.type === "match_created") {
+              void qc.invalidateQueries({
+                queryKey: ["supplier-matched-requests", "active"],
+              });
+            }
+          },
         )
         .subscribe();
-      return () => {
-        void supabase.removeChannel(channel);
-      };
     });
     return () => {
       cancelled = true;
+      if (channel) void supabase.removeChannel(channel);
     };
   }, [qc]);
 }

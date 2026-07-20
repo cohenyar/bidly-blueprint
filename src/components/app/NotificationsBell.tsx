@@ -12,7 +12,11 @@ import {
 import { formatDateTime } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
-export function NotificationsBell() {
+export function NotificationsBell({
+  requestRoute = "/app/requests/$id",
+}: {
+  requestRoute?: "/app/requests/$id" | "/supplier/requests/$id";
+}) {
   useNotificationsRealtime();
   const q = useNotifications();
   const [open, setOpen] = useState(false);
@@ -78,19 +82,16 @@ export function NotificationsBell() {
 
           <div className="max-h-[380px] overflow-auto">
             {q.isPending ? (
-              <p className="p-6 text-center text-[12px] text-muted-foreground">
-                טוען…
-              </p>
+              <p className="p-6 text-center text-[12px] text-muted-foreground">טוען…</p>
             ) : items.length === 0 ? (
-              <p className="p-6 text-center text-[12px] text-muted-foreground">
-                אין התראות עדיין.
-              </p>
+              <p className="p-6 text-center text-[12px] text-muted-foreground">אין התראות עדיין.</p>
             ) : (
               <ul>
                 {items.map((n) => (
                   <NotificationItem
                     key={n.id}
                     n={n}
+                    requestRoute={requestRoute}
                     onMarkRead={() => {
                       if (!n.read_at) markOne.mutate(n.id);
                       setOpen(false);
@@ -109,9 +110,11 @@ export function NotificationsBell() {
 function NotificationItem({
   n,
   onMarkRead,
+  requestRoute,
 }: {
   n: NotificationRow;
   onMarkRead: () => void;
+  requestRoute: "/app/requests/$id" | "/supplier/requests/$id";
 }) {
   const inner = (
     <div
@@ -128,17 +131,11 @@ function NotificationItem({
         aria-hidden
       />
       <div className="min-w-0 flex-1">
-        <p className="truncate text-[13px] font-semibold text-foreground">
-          {n.title}
-        </p>
+        <p className="truncate text-[13px] font-semibold text-foreground">{n.title}</p>
         {n.body ? (
-          <p className="mt-0.5 line-clamp-2 text-[12px] text-muted-foreground">
-            {n.body}
-          </p>
+          <p className="mt-0.5 line-clamp-2 text-[12px] text-muted-foreground">{n.body}</p>
         ) : null}
-        <p className="mt-1 text-[11px] text-muted-foreground">
-          {formatDateTime(n.created_at)}
-        </p>
+        <p className="mt-1 text-[11px] text-muted-foreground">{formatDateTime(n.created_at)}</p>
       </div>
     </div>
   );
@@ -147,7 +144,7 @@ function NotificationItem({
     return (
       <li>
         <Link
-          to="/app/requests/$id"
+          to={requestRoute}
           params={{ id: n.request_id }}
           onClick={onMarkRead}
           className="block hover:bg-accent/40"

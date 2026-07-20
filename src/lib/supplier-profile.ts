@@ -10,12 +10,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
-export type SupplierProfileRow =
-  Database["public"]["Tables"]["supplier_profiles"]["Row"];
-export type SupplierProfileInsert =
-  Database["public"]["Tables"]["supplier_profiles"]["Insert"];
-export type SupplierProfileUpdate =
-  Database["public"]["Tables"]["supplier_profiles"]["Update"];
+export type SupplierProfileRow = Database["public"]["Tables"]["supplier_profiles"]["Row"];
+export type SupplierProfileInsert = Database["public"]["Tables"]["supplier_profiles"]["Insert"];
 
 export type SupplierProfileInput = {
   business_name: string;
@@ -28,36 +24,29 @@ export type SupplierProfileInput = {
 
 const URL_RE = /^https?:\/\/\S+$/i;
 
-export type SupplierProfileErrors = Partial<
-  Record<keyof SupplierProfileInput, string>
->;
+export type SupplierProfileErrors = Partial<Record<keyof SupplierProfileInput, string>>;
 
-export function validateSupplierProfile(
-  input: SupplierProfileInput,
-): SupplierProfileErrors {
+export function validateSupplierProfile(input: SupplierProfileInput): SupplierProfileErrors {
   const e: SupplierProfileErrors = {};
   const name = input.business_name.trim();
-  if (name.length < 2 || name.length > 80)
-    e.business_name = "שם עסק חייב להיות בין 2 ל-80 תווים.";
-  if (input.description.length > 1000)
-    e.description = "תיאור מוגבל ל-1000 תווים.";
-  if (input.service_area.length > 200)
-    e.service_area = "אזור שירות מוגבל ל-200 תווים.";
+  if (name.length < 2 || name.length > 80) e.business_name = "שם עסק חייב להיות בין 2 ל-80 תווים.";
+  if (input.description.length > 1000) e.description = "תיאור מוגבל ל-1000 תווים.";
+  if (input.service_area.length > 200) e.service_area = "אזור שירות מוגבל ל-200 תווים.";
   if (
     input.starting_price_ils !== null &&
-    (!Number.isFinite(input.starting_price_ils) ||
-      input.starting_price_ils < 0)
+    (!Number.isInteger(input.starting_price_ils) ||
+      input.starting_price_ils < 0 ||
+      input.starting_price_ils > 2_147_483_647)
   )
-    e.starting_price_ils = "מחיר התחלה חייב להיות מספר חיובי.";
+    e.starting_price_ils = "מחיר התחלה חייב להיות מספר שלם ולא שלילי.";
   if (
     input.years_experience !== null &&
-    (!Number.isFinite(input.years_experience) ||
+    (!Number.isInteger(input.years_experience) ||
       input.years_experience < 0 ||
       input.years_experience > 100)
   )
     e.years_experience = "שנות ניסיון בטווח 0-100.";
-  if (input.portfolio_links.length > 5)
-    e.portfolio_links = "עד 5 קישורי תיק עבודות.";
+  if (input.portfolio_links.length > 5) e.portfolio_links = "עד 5 קישורי תיק עבודות.";
   for (const link of input.portfolio_links) {
     if (link.length > 500 || !URL_RE.test(link)) {
       e.portfolio_links = "כל קישור חייב להיות כתובת http(s) תקינה.";
@@ -73,10 +62,7 @@ export function useMySupplierProfile() {
   return useQuery({
     queryKey: ["supplier_profile", "me"],
     queryFn: async (): Promise<SupplierProfileRow | null> => {
-      const { data, error } = await supabase
-        .from("supplier_profiles")
-        .select("*")
-        .maybeSingle();
+      const { data, error } = await supabase.from("supplier_profiles").select("*").maybeSingle();
       if (error) throw error;
       return data ?? null;
     },
@@ -112,6 +98,9 @@ export function useSaveSupplierProfile() {
     },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["supplier_profile"] });
+      void qc.invalidateQueries({
+        queryKey: ["supplier-matched-requests", "active"],
+      });
     },
   });
 }
@@ -122,9 +111,7 @@ export function useMySupplierCategories() {
   return useQuery({
     queryKey: ["supplier_categories", "me"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("supplier_categories")
-        .select("category_id");
+      const { data, error } = await supabase.from("supplier_categories").select("category_id");
       if (error) throw error;
       return (data ?? []).map((r) => r.category_id);
     },
@@ -147,13 +134,7 @@ export function useMySupplierSubcategories() {
 export function useSyncSupplierCategories() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({
-      selected,
-      current,
-    }: {
-      selected: string[];
-      current: string[];
-    }) => {
+    mutationFn: async ({ selected, current }: { selected: string[]; current: string[] }) => {
       const { data: userRes, error: userErr } = await supabase.auth.getUser();
       if (userErr) throw userErr;
       const uid = userRes.user?.id;
@@ -180,6 +161,9 @@ export function useSyncSupplierCategories() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["supplier_categories"] });
       void qc.invalidateQueries({ queryKey: ["supplier_subcategories"] });
+      void qc.invalidateQueries({
+        queryKey: ["supplier-matched-requests", "active"],
+      });
     },
   });
 }
@@ -187,13 +171,7 @@ export function useSyncSupplierCategories() {
 export function useSyncSupplierSubcategories() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({
-      selected,
-      current,
-    }: {
-      selected: string[];
-      current: string[];
-    }) => {
+    mutationFn: async ({ selected, current }: { selected: string[]; current: string[] }) => {
       const { data: userRes, error: userErr } = await supabase.auth.getUser();
       if (userErr) throw userErr;
       const uid = userRes.user?.id;
@@ -213,14 +191,15 @@ export function useSyncSupplierSubcategories() {
       if (toAdd.length) {
         const { error } = await supabase
           .from("supplier_subcategories")
-          .insert(
-            toAdd.map((sid) => ({ supplier_id: uid, subcategory_id: sid })),
-          );
+          .insert(toAdd.map((sid) => ({ supplier_id: uid, subcategory_id: sid })));
         if (error) throw error;
       }
     },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["supplier_subcategories"] });
+      void qc.invalidateQueries({
+        queryKey: ["supplier-matched-requests", "active"],
+      });
     },
   });
 }
@@ -245,16 +224,10 @@ export function computeCompletion(
   const hasProfile = !!profile;
   const hasBusinessName = !!profile?.business_name?.trim();
   const hasDescription = !!profile?.description?.trim();
-  const hasServiceArea = !!profile?.service_area?.trim();
+  const hasServiceArea = (profile?.service_area?.trim().length ?? 0) >= 2;
   const hasCategories = categoryIds.length > 0;
   const hasSubcategories = subcategoryIds.length > 0;
-  const checks = [
-    hasBusinessName,
-    hasDescription,
-    hasServiceArea,
-    hasCategories,
-    hasSubcategories,
-  ];
+  const checks = [hasBusinessName, hasDescription, hasServiceArea, hasCategories, hasSubcategories];
   const done = checks.filter(Boolean).length;
   const percent = Math.round((done / checks.length) * 100);
   return {

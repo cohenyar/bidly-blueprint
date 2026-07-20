@@ -10,7 +10,6 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
 export type RequestRow = Database["public"]["Tables"]["requests"]["Row"];
-export type OfferRow = Database["public"]["Tables"]["offers"]["Row"];
 export type CategoryRow = Database["public"]["Tables"]["categories"]["Row"];
 export type SubcategoryRow = Database["public"]["Tables"]["subcategories"]["Row"];
 export type BudgetType = Database["public"]["Enums"]["budget_type"];
@@ -28,7 +27,10 @@ export const REQUEST_STATUS_LABEL: Record<RequestStatus, string> = {
   cancelled: "בוטלה",
 };
 
-export const REQUEST_STATUS_TONE: Record<RequestStatus, "success" | "primary" | "muted" | "danger"> = {
+export const REQUEST_STATUS_TONE: Record<
+  RequestStatus,
+  "success" | "primary" | "muted" | "danger"
+> = {
   open: "success",
   awarded: "primary",
   closed: "muted",
@@ -62,6 +64,22 @@ export function useSubcategories(categoryId: string | null) {
         .from("subcategories")
         .select("id, slug, name_he, sort_order, is_active, category_id")
         .eq("category_id", categoryId!)
+        .eq("is_active", true)
+        .order("sort_order", { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useAllSubcategories() {
+  return useQuery({
+    queryKey: ["subcategories", "all-active"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("subcategories")
+        .select("id, slug, name_he, sort_order, is_active, category_id")
         .eq("is_active", true)
         .order("sort_order", { ascending: true });
       if (error) throw error;
@@ -124,7 +142,6 @@ export function useCreateRequest() {
       const { data: userRes, error: userErr } = await supabase.auth.getUser();
       if (userErr || !userRes.user) throw new Error("לא מחובר");
 
-      const now = new Date().toISOString();
       const { data, error } = await supabase
         .from("requests")
         .insert({
@@ -137,8 +154,6 @@ export function useCreateRequest() {
           budget_type: input.budget_type,
           budget_min: input.budget_min,
           budget_max: input.budget_max,
-          status: "open",
-          published_at: now,
         })
         .select("id")
         .single();
@@ -170,9 +185,16 @@ export function useCancelRequest() {
 
 /* ─────────────── Formatting ─────────────── */
 
-export function formatBudget(r: Pick<RequestRow, "budget_type" | "budget_min" | "budget_max">): string {
+export function formatBudget(
+  r: Pick<RequestRow, "budget_type" | "budget_min" | "budget_max">,
+): string {
   if (r.budget_type === "open") return "תקציב פתוח";
-  const fmt = (n: number) => new Intl.NumberFormat("he-IL", { style: "currency", currency: "ILS", maximumFractionDigits: 0 }).format(n);
+  const fmt = (n: number) =>
+    new Intl.NumberFormat("he-IL", {
+      style: "currency",
+      currency: "ILS",
+      maximumFractionDigits: 0,
+    }).format(n);
   if (r.budget_type === "fixed") return fmt(r.budget_min ?? 0);
   return `${fmt(r.budget_min ?? 0)} – ${fmt(r.budget_max ?? 0)}`;
 }

@@ -31,6 +31,7 @@ export function StateCard({
         : "text-primary";
   return (
     <div
+      role={tone === "danger" ? "alert" : undefined}
       className={cn(
         "request-spine-navy rounded-2xl border border-border bg-surface p-8 shadow-e1 sm:p-12",
         className,
@@ -84,7 +85,9 @@ export function ErrorState({
   onRetry?: () => void;
 }) {
   const message =
-    error instanceof Error ? error.message : "אירעה שגיאה לא צפויה.";
+    import.meta.env.DEV && error instanceof Error
+      ? error.message
+      : "אירעה שגיאה לא צפויה. נסו שוב בעוד רגע.";
   return (
     <StateCard
       tone="danger"

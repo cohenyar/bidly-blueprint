@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 
-import { useCategories, useSubcategories } from "@/lib/requests";
+import { ErrorState, LoadingState } from "@/components/app/StateCard";
+import { useAllSubcategories, useCategories, type SubcategoryRow } from "@/lib/requests";
 import {
   useMySupplierCategories,
   useMySupplierProfile,
@@ -25,6 +26,7 @@ const errCls = "mt-1 text-[12px] text-danger";
 export function SupplierProfileForm() {
   const profileQ = useMySupplierProfile();
   const catsQ = useCategories();
+  const subsQ = useAllSubcategories();
   const myCatsQ = useMySupplierCategories();
   const mySubsQ = useMySupplierSubcategories();
 
@@ -45,8 +47,20 @@ export function SupplierProfileForm() {
   const [selectedSubs, setSelectedSubs] = useState<string[]>([]);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
+    if (
+      initialized ||
+      !profileQ.isSuccess ||
+      !catsQ.isSuccess ||
+      !subsQ.isSuccess ||
+      !myCatsQ.isSuccess ||
+      !mySubsQ.isSuccess
+    ) {
+      return;
+    }
+
     if (profileQ.data) {
       setForm({
         business_name: profileQ.data.business_name ?? "",
@@ -57,18 +71,22 @@ export function SupplierProfileForm() {
         portfolio_links: profileQ.data.portfolio_links ?? [],
       });
     }
-  }, [profileQ.data]);
+    setSelectedCats(myCatsQ.data ?? []);
+    setSelectedSubs(mySubsQ.data ?? []);
+    setInitialized(true);
+  }, [
+    initialized,
+    profileQ.isSuccess,
+    profileQ.data,
+    catsQ.isSuccess,
+    subsQ.isSuccess,
+    myCatsQ.isSuccess,
+    myCatsQ.data,
+    mySubsQ.isSuccess,
+    mySubsQ.data,
+  ]);
 
-  useEffect(() => {
-    if (myCatsQ.data) setSelectedCats(myCatsQ.data);
-  }, [myCatsQ.data]);
-
-  useEffect(() => {
-    if (mySubsQ.data) setSelectedSubs(mySubsQ.data);
-  }, [mySubsQ.data]);
-
-  const patch = (p: Partial<SupplierProfileInput>) =>
-    setForm((f) => ({ ...f, ...p }));
+  const patch = (p: Partial<SupplierProfileInput>) => setForm((f) => ({ ...f, ...p }));
 
   async function onSubmit(ev: React.FormEvent) {
     ev.preventDefault();
@@ -85,33 +103,38 @@ export function SupplierProfileForm() {
         current: myCatsQ.data ?? [],
       });
       // Drop subs whose parent category was removed.
-      const validSubs = selectedSubs.filter((sid) =>
-        (myCatsQ.data ?? [])
-          .concat(selectedCats)
-          .some(() => true /* checked below */),
-      );
+      const validSubs = selectedSubs.filter((subcategoryId) => {
+        const subcategory = subsQ.data?.find((candidate) => candidate.id === subcategoryId);
+        return Boolean(subcategory && selectedCats.includes(subcategory.category_id));
+      });
       await syncSubs.mutateAsync({
         selected: validSubs,
         current: mySubsQ.data ?? [],
       });
+      setSelectedSubs(validSubs);
       setSaveMessage("הפרופיל נשמר.");
-    } catch (err) {
-      setSaveError(err instanceof Error ? err.message : "שמירה נכשלה.");
+    } catch {
+      setSaveError("שמירת הפרופיל נכשלה. בדקו את הפרטים ונסו שוב בעוד רגע.");
     }
   }
 
   function toggleCategory(id: string) {
-    setSelectedCats((cur) =>
-      cur.includes(id) ? cur.filter((c) => c !== id) : [...cur, id],
+    const removing = selectedCats.includes(id);
+    setSelectedCats((current) =>
+      removing ? current.filter((categoryId) => categoryId !== id) : [...current, id],
     );
-    // Remove selected subs whose parent is unchecked.
-    setSelectedSubs((subs) => subs);
+    if (removing) {
+      setSelectedSubs((current) =>
+        current.filter((subcategoryId) => {
+          const subcategory = subsQ.data?.find((candidate) => candidate.id === subcategoryId);
+          return subcategory?.category_id !== id;
+        }),
+      );
+    }
   }
 
   function toggleSubcategory(id: string) {
-    setSelectedSubs((cur) =>
-      cur.includes(id) ? cur.filter((s) => s !== id) : [...cur, id],
-    );
+    setSelectedSubs((cur) => (cur.includes(id) ? cur.filter((s) => s !== id) : [...cur, id]));
   }
 
   function updateLink(idx: number, value: string) {
@@ -124,9 +147,7 @@ export function SupplierProfileForm() {
 
   function addLink() {
     setForm((f) =>
-      f.portfolio_links.length >= 5
-        ? f
-        : { ...f, portfolio_links: [...f.portfolio_links, ""] },
+      f.portfolio_links.length >= 5 ? f : { ...f, portfolio_links: [...f.portfolio_links, ""] },
     );
   }
 
@@ -137,8 +158,33 @@ export function SupplierProfileForm() {
     }));
   }
 
-  const busy =
-    saveProfile.isPending || syncCats.isPending || syncSubs.isPending;
+  const busy = saveProfile.isPending || syncCats.isPending || syncSubs.isPending;
+
+  const loading =
+    profileQ.isPending ||
+    catsQ.isPending ||
+    subsQ.isPending ||
+    myCatsQ.isPending ||
+    mySubsQ.isPending;
+  const loadError = profileQ.error ?? catsQ.error ?? subsQ.error ?? myCatsQ.error ?? mySubsQ.error;
+
+  if (loadError) {
+    return (
+      <ErrorState
+        error={loadError}
+        onRetry={() => {
+          void Promise.all([
+            profileQ.refetch(),
+            catsQ.refetch(),
+            subsQ.refetch(),
+            myCatsQ.refetch(),
+            mySubsQ.refetch(),
+          ]);
+        }}
+      />
+    );
+  }
+  if (loading || !initialized) return <LoadingState label="טוען את פרופיל נותן השירות…" />;
 
   return (
     <form onSubmit={onSubmit} className="space-y-8">
@@ -162,9 +208,7 @@ export function SupplierProfileForm() {
               dir="auto"
               required
             />
-            {errors.business_name ? (
-              <p className={errCls}>{errors.business_name}</p>
-            ) : null}
+            {errors.business_name ? <p className={errCls}>{errors.business_name}</p> : null}
           </div>
 
           <div className="sm:col-span-2">
@@ -180,9 +224,7 @@ export function SupplierProfileForm() {
               dir="auto"
             />
             <p className={helpCls}>{form.description.length}/1000</p>
-            {errors.description ? (
-              <p className={errCls}>{errors.description}</p>
-            ) : null}
+            {errors.description ? <p className={errCls}>{errors.description}</p> : null}
           </div>
 
           <div>
@@ -198,9 +240,7 @@ export function SupplierProfileForm() {
               placeholder="למשל: מרכז, שרון, ירושלים"
               dir="auto"
             />
-            {errors.service_area ? (
-              <p className={errCls}>{errors.service_area}</p>
-            ) : null}
+            {errors.service_area ? <p className={errCls}>{errors.service_area}</p> : null}
           </div>
 
           <div>
@@ -211,12 +251,13 @@ export function SupplierProfileForm() {
               id="starting_price"
               type="number"
               min={0}
+              max={2_147_483_647}
+              step={1}
               className={cn(inputCls, "mt-1.5")}
               value={form.starting_price_ils ?? ""}
               onChange={(e) =>
                 patch({
-                  starting_price_ils:
-                    e.target.value === "" ? null : Number(e.target.value),
+                  starting_price_ils: e.target.value === "" ? null : Number(e.target.value),
                 })
               }
             />
@@ -234,18 +275,16 @@ export function SupplierProfileForm() {
               type="number"
               min={0}
               max={100}
+              step={1}
               className={cn(inputCls, "mt-1.5")}
               value={form.years_experience ?? ""}
               onChange={(e) =>
                 patch({
-                  years_experience:
-                    e.target.value === "" ? null : Number(e.target.value),
+                  years_experience: e.target.value === "" ? null : Number(e.target.value),
                 })
               }
             />
-            {errors.years_experience ? (
-              <p className={errCls}>{errors.years_experience}</p>
-            ) : null}
+            {errors.years_experience ? <p className={errCls}>{errors.years_experience}</p> : null}
           </div>
         </div>
       </section>
@@ -271,9 +310,7 @@ export function SupplierProfileForm() {
 
         <div className="mt-4 space-y-2">
           {form.portfolio_links.length === 0 ? (
-            <p className="text-[13px] text-muted-foreground">
-              עדיין לא הוספתם קישורים.
-            </p>
+            <p className="text-[13px] text-muted-foreground">עדיין לא הוספתם קישורים.</p>
           ) : (
             form.portfolio_links.map((link, i) => (
               <div key={i} className="flex items-center gap-2">
@@ -296,9 +333,7 @@ export function SupplierProfileForm() {
               </div>
             ))
           )}
-          {errors.portfolio_links ? (
-            <p className={errCls}>{errors.portfolio_links}</p>
-          ) : null}
+          {errors.portfolio_links ? <p className={errCls}>{errors.portfolio_links}</p> : null}
         </div>
       </section>
 
@@ -316,6 +351,7 @@ export function SupplierProfileForm() {
                 key={c.id}
                 type="button"
                 onClick={() => toggleCategory(c.id)}
+                aria-pressed={on}
                 className={cn(
                   "inline-flex h-9 items-center rounded-full border px-3 text-[13px] font-semibold transition-colors",
                   on
@@ -338,12 +374,10 @@ export function SupplierProfileForm() {
             selectedCats.map((cid) => (
               <SubcategoryPicker
                 key={cid}
-                categoryId={cid}
-                categoryName={
-                  catsQ.data?.find((c) => c.id === cid)?.name_he ?? ""
-                }
+                categoryName={catsQ.data?.find((c) => c.id === cid)?.name_he ?? ""}
                 selected={selectedSubs}
                 onToggle={toggleSubcategory}
+                items={(subsQ.data ?? []).filter((subcategory) => subcategory.category_id === cid)}
               />
             ))
           )}
@@ -351,11 +385,13 @@ export function SupplierProfileForm() {
       </section>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="text-[13px]">
-          {saveMessage ? (
-            <span className="text-success">{saveMessage}</span>
+        <div className="text-[13px]" aria-live="polite">
+          {saveMessage ? <span className="text-success">{saveMessage}</span> : null}
+          {saveError ? (
+            <span className="text-danger" role="alert">
+              {saveError}
+            </span>
           ) : null}
-          {saveError ? <span className="text-danger">{saveError}</span> : null}
         </div>
         <button
           type="submit"
@@ -370,18 +406,16 @@ export function SupplierProfileForm() {
 }
 
 function SubcategoryPicker({
-  categoryId,
   categoryName,
   selected,
   onToggle,
+  items,
 }: {
-  categoryId: string;
   categoryName: string;
   selected: string[];
   onToggle: (id: string) => void;
+  items: Array<Pick<SubcategoryRow, "id" | "name_he" | "category_id">>;
 }) {
-  const q = useSubcategories(categoryId);
-  const items = useMemo(() => q.data ?? [], [q.data]);
   return (
     <div className="rounded-xl border border-border bg-surface-muted/40 p-4">
       <p className="text-[12px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
@@ -398,6 +432,7 @@ function SubcategoryPicker({
                 key={s.id}
                 type="button"
                 onClick={() => onToggle(s.id)}
+                aria-pressed={on}
                 className={cn(
                   "inline-flex h-8 items-center rounded-full border px-3 text-[12px] font-semibold transition-colors",
                   on

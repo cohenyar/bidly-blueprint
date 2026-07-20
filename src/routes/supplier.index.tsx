@@ -1,27 +1,53 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { BriefcaseBusiness, CheckCircle2, Inbox } from "lucide-react";
 
 import { PageContainer } from "@/components/app/PageContainer";
 import { ProfileCompletionPanel } from "@/components/app/ProfileCompletionPanel";
-import { ErrorState, LoadingState } from "@/components/app/StateCard";
+import { Section } from "@/components/app/Section";
+import { ErrorState, LoadingState, StateCard } from "@/components/app/StateCard";
+import { SupplierMatchedRequestCard } from "@/components/app/SupplierMatchedRequestCard";
 import {
   computeCompletion,
   useMySupplierCategories,
   useMySupplierProfile,
   useMySupplierSubcategories,
 } from "@/lib/supplier-profile";
+import { useActiveMatchedRequests } from "@/lib/supplier-requests";
 
 export const Route = createFileRoute("/supplier/")({
   component: SupplierDashboardPage,
-  head: () => ({ meta: [{ title: "מרכז הספק · Bidly" }] }),
+  head: () => ({ meta: [{ title: "מרחב נותן שירות · Bidly" }] }),
 });
 
 function SupplierDashboardPage() {
-  const profileQ = useMySupplierProfile();
-  const catsQ = useMySupplierCategories();
-  const subsQ = useMySupplierSubcategories();
+  const profileQuery = useMySupplierProfile();
+  const categoriesQuery = useMySupplierCategories();
+  const subcategoriesQuery = useMySupplierSubcategories();
+  const matchesQuery = useActiveMatchedRequests();
 
-  const loading = profileQ.isLoading || catsQ.isLoading || subsQ.isLoading;
-  const error = profileQ.error ?? catsQ.error ?? subsQ.error;
+  const loading =
+    profileQuery.isLoading ||
+    categoriesQuery.isLoading ||
+    subcategoriesQuery.isLoading ||
+    matchesQuery.isLoading;
+  const error =
+    profileQuery.error ?? categoriesQuery.error ?? subcategoriesQuery.error ?? matchesQuery.error;
+
+  async function retry() {
+    await Promise.all([
+      profileQuery.refetch(),
+      categoriesQuery.refetch(),
+      subcategoriesQuery.refetch(),
+      matchesQuery.refetch(),
+    ]);
+  }
+
+  const completion = computeCompletion(
+    profileQuery.data ?? null,
+    categoriesQuery.data ?? [],
+    subcategoriesQuery.data ?? [],
+  );
+  const matches = matchesQuery.data ?? [];
 
   return (
     <PageContainer>
@@ -29,50 +55,106 @@ function SupplierDashboardPage() {
         <div className="request-spine-navy ps-5">
           <span className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.18em] text-primary">
             <span className="h-px w-6 bg-primary" aria-hidden />
-            מרחב ספק
+            מרחב נותן שירות
           </span>
           <h1 className="mt-3 text-[28px] font-bold leading-tight tracking-[-0.01em] text-foreground sm:text-[34px]">
-            ברוכים הבאים למרחב הספק.
+            הבקשות שמתאימות לעסק שלכם.
           </h1>
-          <p className="mt-2 max-w-[52ch] text-[14px] leading-relaxed text-muted-foreground sm:text-[15px]">
-            השלימו את פרטי העסק ואת התחומים שאתם מציעים. בקשות רלוונטיות יופיעו כאן לאחר שמערכת ההתאמות תופעל.
+          <p className="mt-2 max-w-[58ch] text-[14px] leading-relaxed text-muted-foreground sm:text-[15px]">
+            כאן תמצאו רק בקשות עם התאמה פעילה לתחומים שבחרתם, ותוכלו לעיין בפרטים ולשלוח הצעה פרטית.
           </p>
         </div>
 
         <div className="mt-10">
           {loading ? (
-            <LoadingState label="טוען את הפרופיל…" />
+            <LoadingState label="טוען את מרחב נותן השירות…" />
           ) : error ? (
-            <ErrorState error={error} onRetry={() => void profileQ.refetch()} />
+            <ErrorState error={error} onRetry={() => void retry()} />
           ) : (
-            <div className="space-y-6">
-              <ProfileCompletionPanel
-                status={computeCompletion(
-                  profileQ.data ?? null,
-                  catsQ.data ?? [],
-                  subsQ.data ?? [],
+            <div className="space-y-10">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <SummaryCard
+                  icon={<BriefcaseBusiness className="h-5 w-5" />}
+                  label="התאמות פעילות"
+                  value={String(matches.length)}
+                  detail="בקשות הזמינות כעת להצעה"
+                />
+                <SummaryCard
+                  icon={<CheckCircle2 className="h-5 w-5" />}
+                  label="השלמת פרופיל"
+                  value={`${completion.percent}%`}
+                  detail={
+                    completion.percent === 100
+                      ? "הפרופיל מוכן לקבלת התאמות"
+                      : "השלימו את הפרטים כדי לקבל התאמות"
+                  }
+                />
+              </div>
+
+              <ProfileCompletionPanel status={completion} />
+
+              <Section
+                eyebrow="התאמות פעילות"
+                title="בקשות מותאמות"
+                action={
+                  <Link
+                    to="/supplier/profile"
+                    className="inline-flex h-10 items-center justify-center rounded-lg border border-border bg-surface px-4 text-[13px] font-semibold text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                  >
+                    עריכת פרופיל
+                  </Link>
+                }
+              >
+                {matches.length === 0 ? (
+                  <StateCard
+                    icon={<Inbox className="h-5 w-5" strokeWidth={2.25} />}
+                    eyebrow="אין התאמות פעילות"
+                    title="אין כרגע בקשות שמתאימות לפרופיל שלכם."
+                    body="בקשות חדשות יופיעו כאן אוטומטית כשהן יתאימו לתחומים שבחרתם והפרופיל יהיה מלא."
+                  />
+                ) : (
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    {matches.map((request) => (
+                      <SupplierMatchedRequestCard key={request.id} request={request} />
+                    ))}
+                  </div>
                 )}
-              />
-
-              <div className="rounded-2xl border border-dashed border-border bg-surface-muted/40 p-6 text-[13px] text-muted-foreground sm:p-8">
-                <p className="font-semibold text-foreground">בקשות מותאמות</p>
-                <p className="mt-1">
-                  לאחר שמערכת ההתאמות תופעל, כאן תופענה הבקשות הרלוונטיות לתחומים שבחרתם.
-                </p>
-              </div>
-
-              <div className="flex flex-wrap gap-3">
-                <Link
-                  to="/supplier/profile"
-                  className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-border bg-surface px-5 text-[14px] font-semibold text-foreground hover:bg-accent"
-                >
-                  עריכת פרופיל
-                </Link>
-              </div>
+              </Section>
             </div>
           )}
         </div>
       </div>
     </PageContainer>
+  );
+}
+
+function SummaryCard({
+  icon,
+  label,
+  value,
+  detail,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  detail: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-border bg-surface p-5 shadow-e1">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+            {label}
+          </p>
+          <p className="mt-2 font-numeric text-[28px] font-bold leading-none text-foreground">
+            {value}
+          </p>
+          <p className="mt-2 text-[12px] text-muted-foreground">{detail}</p>
+        </div>
+        <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-surface-muted text-primary">
+          {icon}
+        </span>
+      </div>
+    </div>
   );
 }
