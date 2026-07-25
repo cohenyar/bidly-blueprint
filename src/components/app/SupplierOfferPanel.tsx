@@ -4,6 +4,7 @@ import { CheckCircle2, Clock, Send } from "lucide-react";
 import {
   offerSubmissionErrorMessage,
   useSubmitOffer,
+  useWithdrawOffer,
   validateOffer,
   type OfferRow,
   type OfferStatus,
@@ -19,8 +20,15 @@ const STATUS_LABEL: Record<OfferStatus, string> = {
   withdrawn: "ההצעה אינה פעילה",
 };
 
-export function SupplierOwnOffer({ offer }: { offer: OfferRow }) {
+export function SupplierOwnOffer({
+  offer,
+  canWithdraw = false,
+}: {
+  offer: OfferRow;
+  canWithdraw?: boolean;
+}) {
   const positive = offer.status === "selected";
+  const withdraw = useWithdrawOffer(offer.request_id);
   return (
     <div
       className={cn(
@@ -73,6 +81,27 @@ export function SupplierOwnOffer({ offer }: { offer: OfferRow }) {
       <p className="mt-4 text-[11px] text-muted-foreground">
         נשלחה ב־{formatDateTime(offer.created_at)}
       </p>
+      {canWithdraw && offer.status === "submitted" ? (
+        <div className="mt-5 border-t border-border pt-4">
+          <button
+            type="button"
+            disabled={withdraw.isPending}
+            onClick={() => {
+              if (window.confirm("למשוך את ההצעה? לא ניתן יהיה לשלוח אותה מחדש.")) {
+                void withdraw.mutateAsync(offer.id);
+              }
+            }}
+            className="inline-flex h-10 items-center justify-center rounded-lg border border-border px-4 text-[13px] font-semibold text-foreground hover:border-danger hover:text-danger disabled:opacity-50"
+          >
+            {withdraw.isPending ? "מושך…" : "משיכת ההצעה"}
+          </button>
+          {withdraw.isError ? (
+            <p role="alert" className="mt-2 text-[12px] text-danger">
+              משיכת ההצעה נכשלה. ייתכן שהבקשה או ההתאמה כבר אינן פעילות.
+            </p>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }

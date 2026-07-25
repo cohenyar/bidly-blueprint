@@ -4,7 +4,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
-export type OfferRow = Database["public"]["Tables"]["offers"]["Row"];
+export type OfferRow = Database["public"]["Functions"]["get_supplier_offer"]["Returns"][number];
+export type CustomerOfferRow =
+  Database["public"]["Functions"]["get_customer_request_offers"]["Returns"][number];
 export type OfferStatus = Database["public"]["Enums"]["offer_status"];
 
 export type SubmitOfferInput = {
@@ -68,15 +70,11 @@ export function useOwnOffer(requestId: string, enabled = true) {
     queryKey: ["supplier-own-offer", requestId],
     enabled: enabled && Boolean(requestId),
     queryFn: async (): Promise<OfferRow | null> => {
-      const { data, error } = await supabase
-        .from("offers")
-        .select(
-          "id, request_id, supplier_id, price, estimated_days, message, status, created_at, updated_at, withdrawn_at",
-        )
-        .eq("request_id", requestId)
-        .maybeSingle();
+      const { data, error } = await supabase.rpc("get_supplier_offer", {
+        _request_id: requestId,
+      });
       if (error) throw error;
-      return data ?? null;
+      return data?.[0] ?? null;
     },
   });
 }
@@ -84,36 +82,85 @@ export function useOwnOffer(requestId: string, enabled = true) {
 export function useSubmitOffer(requestId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (input: SubmitOfferInput): Promise<OfferRow> => {
+    mutationFn: async (input: SubmitOfferInput): Promise<string> => {
       const errors = validateOffer(input);
       if (Object.keys(errors).length > 0) {
         throw new Error("Invalid offer input");
       }
 
-      const { data: userResult, error: userError } = await supabase.auth.getUser();
-      if (userError) throw userError;
-      if (!userResult.user) throw new Error("Not authenticated");
-
-      const { data, error } = await supabase
-        .from("offers")
-        .insert({
-          request_id: requestId,
-          supplier_id: userResult.user.id,
-          price: input.price,
-          estimated_days: input.estimated_days,
-          message: input.message.trim(),
-        })
-        .select("*")
-        .single();
+      const { data, error } = await supabase.rpc("submit_offer", {
+        _request_id: requestId,
+        _price: input.price,
+        _estimated_days: input.estimated_days,
+        _message: input.message.trim(),
+      });
       if (error) throw error;
       return data;
-    },
-    onSuccess: (offer) => {
-      queryClient.setQueryData(["supplier-own-offer", requestId], offer);
     },
     onSettled: () => {
       void queryClient.invalidateQueries({
         queryKey: ["supplier-own-offer", requestId],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["supplier-matched-request", requestId],
+      });
+    },
+  });
+}
+
+export function useWithdrawOffer(requestId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (offerId: string) => {
+      const { data, error } = await supabase.rpc("withdraw_offer", {
+        _offer_id: offerId,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: ["supplier-own-offer", requestId],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["supplier-matched-request", requestId],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["supplier-matched-requests", "active"],
+      });
+    },
+  });
+}
+
+export function useCustomerRequestOffers(requestId: string) {
+  return useQuery({
+    queryKey: ["customer-request-offers", requestId],
+    enabled: Boolean(requestId),
+    queryFn: async (): Promise<CustomerOfferRow[]> => {
+      const { data, error } = await supabase.rpc("get_customer_request_offers", {
+        _request_id: requestId,
+      });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
+
+export function useSelectOffer(requestId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (offerId: string) => {
+      const { data, error } = await supabase.rpc("select_offer", {
+        _offer_id: offerId,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["my-requests"] });
+      void queryClient.invalidateQueries({ queryKey: ["request", requestId] });
+      void queryClient.invalidateQueries({
+        queryKey: ["customer-request-offers", requestId],
       });
     },
   });

@@ -1,11 +1,24 @@
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowRight } from "lucide-react";
-import { useMemo, useState } from "react";
+import { ArrowRight, CheckCircle2 } from "lucide-react";
 
+import { AttachmentUploader } from "@/components/app/AttachmentUploader";
+import { DynamicRequestQuestionnaire } from "@/components/app/DynamicRequestQuestionnaire";
 import { PageContainer } from "@/components/app/PageContainer";
 import { Section } from "@/components/app/Section";
-import { ErrorState } from "@/components/app/StateCard";
-import { useCategories, useCreateRequest, useSubcategories, type BudgetType } from "@/lib/requests";
+import { ErrorState, LoadingState } from "@/components/app/StateCard";
+import {
+  useAcquireRequestDraft,
+  useCategories,
+  usePublishRequest,
+  useRequest,
+  useRequestServiceAreas,
+  useSaveRequestDraft,
+  useServicesForProfession,
+  useSubcategories,
+  type BudgetType,
+  type RequestDraftInput,
+} from "@/lib/requests";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/app/requests/new")({
@@ -13,161 +26,491 @@ export const Route = createFileRoute("/app/requests/new")({
   head: () => ({ meta: [{ title: "בקשה חדשה · Bidly" }] }),
 });
 
-type Errors = Partial<Record<"title" | "description" | "city" | "category_id" | "budget", string>>;
+type Errors = Partial<
+  Record<
+    | "title"
+    | "description"
+    | "city"
+    | "category_id"
+    | "subcategory_id"
+    | "service"
+    | "delivery_mode"
+    | "service_area_id"
+    | "budget"
+    | "questionnaire",
+    string
+  >
+>;
+
+const inputClass =
+  "mt-1.5 block h-11 w-full rounded-lg border border-input bg-background px-3.5 text-[14px] text-foreground shadow-e1 placeholder:text-muted-foreground/70 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15";
 
 function CreateRequestPage() {
   const navigate = useNavigate();
-  const cats = useCategories();
-  const [categoryId, setCategoryId] = useState<string>("");
-  const subs = useSubcategories(categoryId || null);
-  const [subcategoryId, setSubcategoryId] = useState<string>("");
+  const acquireDraft = useAcquireRequestDraft();
+  const acquireStarted = useRef(false);
+  const [draftId, setDraftId] = useState<string | null>(null);
+  const draftQuery = useRequest(draftId ?? "");
+  const saveDraft = useSaveRequestDraft(draftId);
+  const autosaveDraft = saveDraft.mutate;
+  const publishRequest = usePublishRequest();
+  const categoriesQuery = useCategories();
+  const serviceAreasQuery = useRequestServiceAreas();
+
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [city, setCity] = useState("");
-  const [budgetType, setBudgetType] = useState<BudgetType>("range");
+  const [categoryId, setCategoryId] = useState("");
+  const [subcategoryId, setSubcategoryId] = useState("");
+  const [serviceId, setServiceId] = useState("");
+  const [missingServiceText, setMissingServiceText] = useState("");
+  const [deliveryMode, setDeliveryMode] = useState<"on_site" | "remote" | "">("");
+  const [serviceAreaId, setServiceAreaId] = useState("");
+  const [budgetType, setBudgetType] = useState<BudgetType>("open");
   const [budgetMin, setBudgetMin] = useState("");
   const [budgetMax, setBudgetMax] = useState("");
   const [errors, setErrors] = useState<Errors>({});
-  const create = useCreateRequest();
+  const [initialized, setInitialized] = useState(false);
+  const [autosaveStatus, setAutosaveStatus] = useState("מכין טיוטה פרטית…");
+  const [questionnaireValid, setQuestionnaireValid] = useState(true);
+  const [questionnairePending, setQuestionnairePending] = useState(false);
+  const [taxonomySaving, setTaxonomySaving] = useState(false);
 
-  const validate = useMemo(
-    () => (): Errors => {
-      const e: Errors = {};
-      if (title.trim().length < 3 || title.trim().length > 120)
-        e.title = "כותרת חייבת להיות בין 3 ל-120 תווים.";
-      if (description.trim().length < 20 || description.trim().length > 4000)
-        e.description = "תיאור חייב להיות בין 20 ל-4000 תווים.";
-      if (city.trim().length < 2) e.city = "יש להזין עיר.";
-      if (!categoryId) e.category_id = "יש לבחור תחום.";
-      if (budgetType === "fixed") {
-        const n = Number(budgetMin);
-        if (!Number.isFinite(n) || n <= 0) e.budget = "סכום חייב להיות חיובי.";
-      } else if (budgetType === "range") {
-        const lo = Number(budgetMin);
-        const hi = Number(budgetMax);
-        if (!Number.isFinite(lo) || !Number.isFinite(hi) || lo <= 0 || hi <= 0)
-          e.budget = "יש להזין טווח תקציב תקין.";
-        else if (lo > hi) e.budget = "סכום מינ׳ גדול מסכום מקס׳.";
-      }
-      return e;
-    },
-    [title, description, city, categoryId, budgetType, budgetMin, budgetMax],
-  );
+  const subcategoriesQuery = useSubcategories(categoryId || null);
+  const servicesQuery = useServicesForProfession(subcategoryId || null);
 
-  async function onSubmit(ev: React.FormEvent) {
-    ev.preventDefault();
-    const e = validate();
-    setErrors(e);
-    if (Object.keys(e).length > 0) return;
+  useEffect(() => {
+    if (
+      categoryId &&
+      !subcategoryId &&
+      !subcategoriesQuery.isPending &&
+      (subcategoriesQuery.data ?? []).length === 0
+    ) {
+      setQuestionnaireValid(true);
+    }
+  }, [categoryId, subcategoryId, subcategoriesQuery.isPending, subcategoriesQuery.data]);
 
-    const payload = {
+  useEffect(() => {
+    if (acquireStarted.current) return;
+    acquireStarted.current = true;
+    acquireDraft.mutate(undefined, {
+      onSuccess: setDraftId,
+    });
+  }, [acquireDraft]);
+
+  useEffect(() => {
+    if (!draftQuery.isSuccess || !draftQuery.data || initialized) return;
+    const draft = draftQuery.data;
+    if (draft.published_at) {
+      void navigate({ to: "/app/requests/$id", params: { id: draft.id }, replace: true });
+      return;
+    }
+    setTitle(draft.title ?? "");
+    setDescription(draft.description ?? "");
+    setCity(draft.city ?? "");
+    setCategoryId(draft.category_id ?? "");
+    setSubcategoryId(draft.subcategory_id ?? "");
+    setServiceId(draft.service_id ?? "");
+    setMissingServiceText(draft.missing_service_text ?? "");
+    setDeliveryMode(
+      draft.delivery_mode === "on_site" || draft.delivery_mode === "remote"
+        ? draft.delivery_mode
+        : "",
+    );
+    setServiceAreaId(draft.service_area_id ?? "");
+    setBudgetType(draft.budget_type);
+    setBudgetMin(draft.budget_min === null ? "" : String(draft.budget_min));
+    setBudgetMax(draft.budget_max === null ? "" : String(draft.budget_max));
+    setAutosaveStatus("הטיוטה פרטית ונשמרת אוטומטית.");
+    setInitialized(true);
+  }, [draftQuery.isSuccess, draftQuery.data, initialized, navigate]);
+
+  const draftInput = useMemo<RequestDraftInput>(
+    () => ({
       title,
       description,
       city,
       category_id: categoryId,
-      subcategory_id: subcategoryId || null,
+      subcategory_id: subcategoryId,
+      service_id: serviceId,
+      missing_service_text: missingServiceText,
+      delivery_mode: deliveryMode,
+      service_area_id: serviceAreaId,
       budget_type: budgetType,
-      budget_min:
-        budgetType === "open"
-          ? null
-          : budgetType === "fixed"
-            ? Number(budgetMin)
-            : Number(budgetMin),
+      budget_min: budgetType === "open" || budgetMin === "" ? null : Number(budgetMin),
       budget_max:
         budgetType === "open"
           ? null
           : budgetType === "fixed"
-            ? Number(budgetMin)
-            : Number(budgetMax),
-    };
+            ? budgetMin === ""
+              ? null
+              : Number(budgetMin)
+            : budgetMax === ""
+              ? null
+              : Number(budgetMax),
+    }),
+    [
+      title,
+      description,
+      city,
+      categoryId,
+      subcategoryId,
+      serviceId,
+      missingServiceText,
+      deliveryMode,
+      serviceAreaId,
+      budgetType,
+      budgetMin,
+      budgetMax,
+    ],
+  );
+
+  useEffect(() => {
+    if (!initialized || !draftId || taxonomySaving) return;
+    const timer = window.setTimeout(() => {
+      setAutosaveStatus("שומר טיוטה…");
+      autosaveDraft(draftInput, {
+        onSuccess: () => setAutosaveStatus("כל השינויים נשמרו בטיוטה הפרטית."),
+        onError: () => setAutosaveStatus("השמירה האוטומטית נכשלה. הפרטים נשארו במסך."),
+      });
+    }, 800);
+    return () => window.clearTimeout(timer);
+  }, [initialized, draftId, draftInput, taxonomySaving, autosaveDraft]);
+
+  async function persistTaxonomy(next: Partial<RequestDraftInput>) {
+    setTaxonomySaving(true);
+    setQuestionnaireValid(false);
     try {
-      const created = await create.mutateAsync(payload);
-      void navigate({ to: "/app/requests/$id", params: { id: created.id } });
+      await saveDraft.mutateAsync({ ...draftInput, ...next });
+      setAutosaveStatus("בחירת התחום נשמרה.");
     } catch {
-      /* handled below via create.isError */
+      setAutosaveStatus("שמירת בחירת התחום נכשלה.");
+    } finally {
+      setTaxonomySaving(false);
     }
   }
 
-  const inputCls =
-    "block w-full rounded-lg border border-input bg-background px-3.5 h-11 text-[14px] text-foreground shadow-e1 placeholder:text-muted-foreground/70 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15";
+  function validate(): Errors {
+    const nextErrors: Errors = {};
+    if (title.trim().length < 3 || title.trim().length > 120) {
+      nextErrors.title = "הכותרת חייבת להכיל 3–120 תווים.";
+    }
+    if (description.trim().length < 20 || description.trim().length > 4000) {
+      nextErrors.description = "התיאור חייב להכיל 20–4,000 תווים.";
+    }
+    if (city.trim().length < 2 || city.trim().length > 80) {
+      nextErrors.city = "יש להזין עיר תקינה.";
+    }
+    if (!categoryId) nextErrors.category_id = "יש לבחור קטגוריה.";
+    if ((subcategoriesQuery.data ?? []).length > 0 && !subcategoryId) {
+      nextErrors.subcategory_id = "יש לבחור מקצוע.";
+    }
+    if (!serviceId && missingServiceText.trim().length < 3) {
+      nextErrors.service = "בחרו שירות או תארו את השירות שלא מצאתם.";
+    }
+    if (!deliveryMode) {
+      nextErrors.delivery_mode = "יש לבחור אם השירות נדרש במקום או מרחוק.";
+    } else if (deliveryMode === "on_site" && !serviceAreaId) {
+      nextErrors.service_area_id = "יש לבחור אזור שירות מנוהל.";
+    } else if (deliveryMode === "remote") {
+      const selectedService = servicesQuery.data?.find((service) => service.id === serviceId);
+      if (!serviceId || !selectedService?.supports_remote) {
+        nextErrors.service = "שירות מרחוק דורש שירות מנוהל שתומך בעבודה מרחוק.";
+      }
+      if (missingServiceText.trim()) {
+        nextErrors.service = "לא ניתן להשתמש בשירות חסר עבור בקשה מרחוק.";
+      }
+    }
+    if (budgetType === "fixed") {
+      const amount = Number(budgetMin);
+      if (!Number.isFinite(amount) || amount <= 0) {
+        nextErrors.budget = "יש להזין סכום חיובי.";
+      }
+    } else if (budgetType === "range") {
+      const minimum = Number(budgetMin);
+      const maximum = Number(budgetMax);
+      if (
+        !Number.isFinite(minimum) ||
+        !Number.isFinite(maximum) ||
+        minimum <= 0 ||
+        maximum <= 0 ||
+        minimum > maximum
+      ) {
+        nextErrors.budget = "יש להזין טווח תקציב תקין.";
+      }
+    }
+    if (!questionnaireValid) {
+      nextErrors.questionnaire = "יש להשלים את כל השאלות החובה הגלויות.";
+    }
+    return nextErrors;
+  }
+
+  async function publish(event: React.FormEvent) {
+    event.preventDefault();
+    if (!draftId) return;
+    const nextErrors = validate();
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length || questionnairePending || taxonomySaving) return;
+
+    try {
+      await saveDraft.mutateAsync(draftInput);
+      const publishedId = await publishRequest.mutateAsync(draftId);
+      void navigate({ to: "/app/requests/$id", params: { id: publishedId }, replace: true });
+    } catch {
+      setAutosaveStatus("הפרסום נכשל. הטיוטה וכל הקבצים נשמרו וניתן לנסות שוב.");
+    }
+  }
+
+  const initialLoading =
+    acquireDraft.isPending ||
+    (draftId !== null && draftQuery.isPending) ||
+    categoriesQuery.isPending ||
+    serviceAreasQuery.isPending;
+  const initialError =
+    acquireDraft.error ?? draftQuery.error ?? categoriesQuery.error ?? serviceAreasQuery.error;
+
+  if (initialError) {
+    return (
+      <PageContainer>
+        <div className="py-14">
+          <ErrorState
+            error={initialError}
+            onRetry={() => {
+              acquireDraft.reset();
+              setDraftId(null);
+              setInitialized(false);
+              acquireDraft.mutate(undefined, { onSuccess: setDraftId });
+            }}
+          />
+        </div>
+      </PageContainer>
+    );
+  }
+  if (initialLoading || !initialized || !draftId) {
+    return (
+      <PageContainer>
+        <div className="py-14">
+          <LoadingState label="מכין טיוטה פרטית…" />
+        </div>
+      </PageContainer>
+    );
+  }
+
+  const publishing =
+    publishRequest.isPending || saveDraft.isPending || questionnairePending || taxonomySaving;
 
   return (
     <PageContainer>
       <div className="py-10 sm:py-14">
-        <div className="request-spine-navy ps-5">
-          <span className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.18em] text-primary">
-            <span className="h-px w-6 bg-primary" aria-hidden />
-            בקשה חדשה
+        <Link
+          to="/app/requests"
+          className="inline-flex items-center gap-1 text-[12px] font-semibold text-muted-foreground hover:text-foreground"
+        >
+          <ArrowRight className="h-3.5 w-3.5" />
+          חזרה לבקשות
+        </Link>
+
+        <div className="request-spine-navy mt-6 ps-5">
+          <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">
+            בקשה חדשה · טיוטה פרטית
           </span>
-          <h1 className="mt-3 text-[28px] font-bold leading-tight tracking-[-0.01em] text-foreground sm:text-[34px]">
-            נסחו את הבקשה
+          <h1 className="mt-3 text-[28px] font-bold text-foreground sm:text-[34px]">
+            תארו מה אתם צריכים
           </h1>
-          <p className="mt-2 max-w-[60ch] text-[14px] leading-relaxed text-muted-foreground sm:text-[15px]">
-            כמה שפרטים יותר ברורים — כך ההצעות שתקבלו יהיו מדויקות יותר.
+          <p className="mt-2 max-w-[60ch] text-[14px] text-muted-foreground">
+            נותני שירות לא יכולים לראות את הטיוטה. ההתאמה מתחילה רק לאחר לחיצה על פרסום.
           </p>
         </div>
 
         <div className="mt-8">
-          <Section eyebrow="פרטי הבקשה" title="מלאו את השדות">
+          <Section eyebrow="פרטי הבקשה" title="מילוי ושמירה אוטומטית">
             <form
-              onSubmit={onSubmit}
-              className="request-spine-navy grid gap-5 rounded-2xl border border-border bg-surface p-6 shadow-e1 sm:p-8"
+              onSubmit={publish}
               noValidate
+              className="request-spine-navy grid gap-6 rounded-2xl border border-border bg-surface p-6 shadow-e1 sm:p-8"
             >
+              <p
+                aria-live="polite"
+                className="flex items-center gap-2 rounded-lg bg-surface-muted px-3 py-2 text-[12px] text-muted-foreground"
+              >
+                <CheckCircle2 className="h-4 w-4 text-success" />
+                {autosaveStatus}
+              </p>
+
               <Field label="כותרת" error={errors.title} required>
                 <input
-                  className={inputCls}
+                  className={inputClass}
                   value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="למשל: עיצוב לוגו לחנות אונליין"
+                  onChange={(event) => setTitle(event.target.value)}
                   maxLength={120}
+                  dir="auto"
                 />
               </Field>
 
               <div className="grid gap-5 sm:grid-cols-2">
-                <Field label="תחום" error={errors.category_id} required>
+                <Field label="קטגוריה" error={errors.category_id} required>
                   <select
-                    className={inputCls}
+                    className={inputClass}
                     value={categoryId}
-                    onChange={(e) => {
-                      setCategoryId(e.target.value);
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      setCategoryId(value);
                       setSubcategoryId("");
+                      setServiceId("");
+                      setMissingServiceText("");
+                      void persistTaxonomy({
+                        category_id: value,
+                        subcategory_id: "",
+                        service_id: "",
+                        missing_service_text: "",
+                      });
                     }}
-                    disabled={cats.isPending}
                   >
-                    <option value="">בחרו תחום…</option>
-                    {(cats.data ?? []).map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name_he}
+                    <option value="">בחירה</option>
+                    {(categoriesQuery.data ?? []).map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.name_he}
                       </option>
                     ))}
                   </select>
                 </Field>
 
-                <Field label="תת-תחום (רשות)">
+                <Field label="מקצוע" error={errors.subcategory_id}>
                   <select
-                    className={inputCls}
+                    className={inputClass}
                     value={subcategoryId}
-                    onChange={(e) => setSubcategoryId(e.target.value)}
-                    disabled={!categoryId || subs.isPending}
+                    disabled={!categoryId || subcategoriesQuery.isPending}
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      setSubcategoryId(value);
+                      setServiceId("");
+                      setMissingServiceText("");
+                      void persistTaxonomy({
+                        subcategory_id: value,
+                        service_id: "",
+                        missing_service_text: "",
+                      });
+                    }}
                   >
-                    <option value="">{categoryId ? "ללא תת-תחום" : "בחרו תחום קודם"}</option>
-                    {(subs.data ?? []).map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name_he}
+                    <option value="">
+                      {(subcategoriesQuery.data ?? []).length
+                        ? "בחירת מקצוע"
+                        : "אין מקצוע מנוהל בקטגוריה"}
+                    </option>
+                    {(subcategoriesQuery.data ?? []).map((profession) => (
+                      <option key={profession.id} value={profession.id}>
+                        {profession.name_he}
                       </option>
                     ))}
                   </select>
                 </Field>
               </div>
 
+              <Field label="שירות" error={errors.service}>
+                <select
+                  className={inputClass}
+                  value={serviceId}
+                  disabled={!subcategoryId || servicesQuery.isPending}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setServiceId(value);
+                    if (value) setMissingServiceText("");
+                    void persistTaxonomy({
+                      service_id: value,
+                      missing_service_text: value ? "" : missingServiceText,
+                    });
+                  }}
+                >
+                  <option value="">
+                    {(servicesQuery.data ?? []).length ? "בחירת שירות" : "לא מצאתי את השירות"}
+                  </option>
+                  {(servicesQuery.data ?? [])
+                    .filter((service) => deliveryMode !== "remote" || service.supports_remote)
+                    .map((service) => (
+                      <option key={service.id} value={service.id}>
+                        {service.name_he}
+                      </option>
+                    ))}
+                </select>
+              </Field>
+
+              <div className="grid gap-5 sm:grid-cols-2">
+                <Field label="אופן קבלת השירות" error={errors.delivery_mode} required>
+                  <select
+                    className={inputClass}
+                    value={deliveryMode}
+                    onChange={(event) => {
+                      const value = event.target.value as "on_site" | "remote" | "";
+                      const selectedService = servicesQuery.data?.find(
+                        (service) => service.id === serviceId,
+                      );
+                      const nextServiceId =
+                        value === "remote" && !selectedService?.supports_remote ? "" : serviceId;
+                      setDeliveryMode(value);
+                      setServiceAreaId(value === "on_site" ? serviceAreaId : "");
+                      setServiceId(nextServiceId);
+                      if (value === "remote") setMissingServiceText("");
+                      void persistTaxonomy({
+                        delivery_mode: value,
+                        service_area_id: value === "on_site" ? serviceAreaId : "",
+                        service_id: nextServiceId,
+                        missing_service_text: value === "remote" ? "" : missingServiceText,
+                      });
+                    }}
+                  >
+                    <option value="">בחירה</option>
+                    <option value="on_site">שירות במקום</option>
+                    <option value="remote">שירות מרחוק</option>
+                  </select>
+                </Field>
+
+                {deliveryMode === "on_site" ? (
+                  <Field label="אזור שירות" error={errors.service_area_id} required>
+                    <select
+                      className={inputClass}
+                      value={serviceAreaId}
+                      onChange={(event) => setServiceAreaId(event.target.value)}
+                    >
+                      <option value="">בחירת אזור מנוהל</option>
+                      {(serviceAreasQuery.data ?? []).map((area) => (
+                        <option key={area.id} value={area.id}>
+                          {area.name_he}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                ) : (
+                  <div className="rounded-lg border border-border bg-surface-muted/40 p-4 text-[12px] text-muted-foreground">
+                    התאמה מרחוק נפתחת רק לנותני שירות שבחרו בשירות המנוהל ותומכים בעבודה מרחוק.
+                  </div>
+                )}
+              </div>
+
+              {!serviceId && categoryId && deliveryMode !== "remote" ? (
+                <Field
+                  label="לא מצאתי את השירות"
+                  hint="הטקסט נשמר בנפרד ואינו יוצר או משנה את הקטלוג."
+                  error={errors.service}
+                  required
+                >
+                  <input
+                    className={inputClass}
+                    value={missingServiceText}
+                    onChange={(event) => setMissingServiceText(event.target.value)}
+                    minLength={3}
+                    maxLength={500}
+                    dir="auto"
+                  />
+                </Field>
+              ) : null}
+
               <Field label="עיר" error={errors.city} required>
                 <input
-                  className={inputCls}
+                  className={inputClass}
                   value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  placeholder="למשל: תל אביב"
+                  onChange={(event) => setCity(event.target.value)}
                   maxLength={80}
+                  dir="auto"
                 />
               </Field>
 
@@ -178,98 +521,66 @@ function CreateRequestPage() {
                 required
               >
                 <textarea
-                  className={cn(inputCls, "h-40 py-3 leading-relaxed")}
+                  className={cn(inputClass, "h-40 py-3 leading-relaxed")}
                   value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="פרטו את מה שאתם מחפשים: היקף, לוחות זמנים, סגנון מועדף, דוגמאות."
+                  onChange={(event) => setDescription(event.target.value)}
                   maxLength={4000}
+                  dir="auto"
                 />
               </Field>
 
-              <div>
-                <span className="mb-1.5 block text-[12px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                  תקציב
-                </span>
-                <div className="mb-3 flex flex-wrap gap-2">
-                  {(
-                    [
-                      { key: "range", label: "טווח" },
-                      { key: "fixed", label: "סכום מדויק" },
-                      { key: "open", label: "פתוח" },
-                    ] as const
-                  ).map((opt) => {
-                    const active = budgetType === opt.key;
-                    return (
-                      <button
-                        key={opt.key}
-                        type="button"
-                        onClick={() => setBudgetType(opt.key)}
-                        aria-pressed={active}
-                        className={cn(
-                          "inline-flex h-9 items-center rounded-full border px-3.5 text-[12px] font-semibold",
-                          active
-                            ? "border-primary bg-primary text-primary-foreground"
-                            : "border-border bg-surface text-muted-foreground hover:border-border-strong hover:text-foreground",
-                        )}
-                      >
-                        {opt.label}
-                      </button>
-                    );
-                  })}
-                </div>
-                {budgetType === "fixed" ? (
-                  <input
-                    className={inputCls}
-                    inputMode="numeric"
-                    value={budgetMin}
-                    onChange={(e) => setBudgetMin(e.target.value.replace(/[^\d]/g, ""))}
-                    placeholder="סכום ב-₪"
-                  />
-                ) : budgetType === "range" ? (
-                  <div className="grid grid-cols-2 gap-3">
-                    <input
-                      className={inputCls}
-                      inputMode="numeric"
-                      value={budgetMin}
-                      onChange={(e) => setBudgetMin(e.target.value.replace(/[^\d]/g, ""))}
-                      placeholder="מ-₪"
-                    />
-                    <input
-                      className={inputCls}
-                      inputMode="numeric"
-                      value={budgetMax}
-                      onChange={(e) => setBudgetMax(e.target.value.replace(/[^\d]/g, ""))}
-                      placeholder="עד ₪"
-                    />
-                  </div>
-                ) : (
-                  <p className="text-[12px] text-muted-foreground">
-                    ספקים יגישו הצעות ללא הגבלת תקציב מראש.
-                  </p>
-                )}
-                {errors.budget ? (
-                  <p className="mt-1.5 text-[12px] text-danger">{errors.budget}</p>
-                ) : null}
-              </div>
+              <BudgetFields
+                type={budgetType}
+                minimum={budgetMin}
+                maximum={budgetMax}
+                error={errors.budget}
+                onTypeChange={setBudgetType}
+                onMinimumChange={setBudgetMin}
+                onMaximumChange={setBudgetMax}
+              />
 
-              {create.isError ? (
-                <ErrorState error={create.error} onRetry={() => create.reset()} />
+              {subcategoryId && !taxonomySaving ? (
+                <DynamicRequestQuestionnaire
+                  requestId={draftId}
+                  subcategoryId={subcategoryId}
+                  serviceId={serviceId || null}
+                  onValidityChange={setQuestionnaireValid}
+                  onPendingChange={setQuestionnairePending}
+                />
+              ) : null}
+              {errors.questionnaire ? (
+                <p role="alert" className="text-[12px] text-danger">
+                  {errors.questionnaire}
+                </p>
+              ) : null}
+
+              <fieldset className="rounded-xl border border-border p-5">
+                <legend className="px-2 text-[14px] font-bold text-foreground">
+                  קבצים מצורפים (אופציונלי)
+                </legend>
+                <p className="mb-4 text-[12px] text-muted-foreground">
+                  הקבצים פרטיים וניתן להסיר אותם לפני הפרסום.
+                </p>
+                <AttachmentUploader requestId={draftId} canEdit />
+              </fieldset>
+
+              {publishRequest.isError ? (
+                <ErrorState error={publishRequest.error} onRetry={() => publishRequest.reset()} />
               ) : null}
 
               <div className="flex flex-col-reverse gap-3 border-t border-border pt-5 sm:flex-row sm:justify-between">
                 <Link
                   to="/app/requests"
-                  className="inline-flex h-11 items-center justify-center rounded-lg border border-border bg-transparent px-4 text-[14px] font-semibold text-foreground hover:border-border-strong hover:bg-accent"
+                  className="inline-flex h-11 items-center justify-center rounded-lg border border-border px-4 text-[14px] font-semibold text-foreground"
                 >
-                  ביטול
+                  יציאה — הטיוטה תישמר
                 </Link>
                 <button
                   type="submit"
-                  disabled={create.isPending}
-                  className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-primary px-5 text-[14px] font-semibold text-primary-foreground shadow-e1 hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
+                  disabled={publishing}
+                  className="inline-flex h-11 items-center justify-center rounded-lg bg-primary px-5 text-[14px] font-semibold text-primary-foreground shadow-e1 disabled:opacity-60"
                 >
-                  {create.isPending ? "מפרסם…" : "פרסום הבקשה"}
-                  <ArrowRight className="h-4 w-4 rtl:rotate-180" />
+                  {publishRequest.isPending ? "מפרסם…" : "פרסום הבקשה"}
                 </button>
               </div>
             </form>
@@ -277,6 +588,85 @@ function CreateRequestPage() {
         </div>
       </div>
     </PageContainer>
+  );
+}
+
+function BudgetFields({
+  type,
+  minimum,
+  maximum,
+  error,
+  onTypeChange,
+  onMinimumChange,
+  onMaximumChange,
+}: {
+  type: BudgetType;
+  minimum: string;
+  maximum: string;
+  error?: string;
+  onTypeChange: (type: BudgetType) => void;
+  onMinimumChange: (value: string) => void;
+  onMaximumChange: (value: string) => void;
+}) {
+  return (
+    <fieldset>
+      <legend className="text-[13px] font-semibold text-foreground">תקציב</legend>
+      <div className="mt-2 flex flex-wrap gap-2">
+        {(
+          [
+            { value: "range", label: "טווח" },
+            { value: "fixed", label: "סכום מדויק" },
+            { value: "open", label: "פתוח" },
+          ] as const
+        ).map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            aria-pressed={type === option.value}
+            onClick={() => onTypeChange(option.value)}
+            className={cn(
+              "h-9 rounded-full border px-3.5 text-[12px] font-semibold",
+              type === option.value
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-border text-muted-foreground",
+            )}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+      {type === "fixed" ? (
+        <input
+          className={inputClass}
+          inputMode="numeric"
+          value={minimum}
+          onChange={(event) => onMinimumChange(event.target.value.replace(/[^\d]/g, ""))}
+          aria-label="סכום תקציב"
+        />
+      ) : type === "range" ? (
+        <div className="grid grid-cols-2 gap-3">
+          <input
+            className={inputClass}
+            inputMode="numeric"
+            value={minimum}
+            onChange={(event) => onMinimumChange(event.target.value.replace(/[^\d]/g, ""))}
+            aria-label="תקציב מינימלי"
+          />
+          <input
+            className={inputClass}
+            inputMode="numeric"
+            value={maximum}
+            onChange={(event) => onMaximumChange(event.target.value.replace(/[^\d]/g, ""))}
+            aria-label="תקציב מרבי"
+          />
+        </div>
+      ) : (
+        <p className="mt-2 text-[12px] text-muted-foreground">
+          נותני שירות יוכלו להגיש הצעה ללא מגבלת תקציב מראש.
+        </p>
+      )}
+      {error ? <p className="mt-1 text-[12px] text-danger">{error}</p> : null}
+    </fieldset>
   );
 }
 
@@ -294,16 +684,17 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <label className="block">
-      <span className="mb-1.5 block text-[12px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+    <label>
+      <span className="text-[13px] font-semibold text-foreground">
         {label}
         {required ? <span className="ms-1 text-danger">*</span> : null}
       </span>
       {children}
+      {hint ? <span className="mt-1 block text-[12px] text-muted-foreground">{hint}</span> : null}
       {error ? (
-        <span className="mt-1.5 block text-[12px] text-danger">{error}</span>
-      ) : hint ? (
-        <span className="mt-1.5 block text-[12px] text-muted-foreground">{hint}</span>
+        <span role="alert" className="mt-1 block text-[12px] text-danger">
+          {error}
+        </span>
       ) : null}
     </label>
   );

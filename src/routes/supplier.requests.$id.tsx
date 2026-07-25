@@ -151,8 +151,14 @@ function SupplierRequestDetailsPage() {
           </h1>
           <div className="mt-3 flex flex-wrap gap-2 text-[12px] text-muted-foreground">
             <MetaChip>{request.city}</MetaChip>
+            {request.delivery_mode === "remote" ? (
+              <MetaChip>שירות מרחוק</MetaChip>
+            ) : request.service_area ? (
+              <MetaChip>אזור שירות: {request.service_area.name_he}</MetaChip>
+            ) : null}
             <MetaChip>{formatBudget(request)}</MetaChip>
             {request.subcategory ? <MetaChip>{request.subcategory.name_he}</MetaChip> : null}
+            {request.service ? <MetaChip>{request.service.name_he}</MetaChip> : null}
             <MetaChip>
               פורסמה: {formatDateTime(request.published_at ?? request.created_at)}
             </MetaChip>
@@ -166,8 +172,35 @@ function SupplierRequestDetailsPage() {
                 <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-foreground">
                   {request.description}
                 </p>
+                {request.missing_service_text ? (
+                  <div className="mt-5 rounded-xl border border-border bg-surface-muted/50 p-4">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                      השירות שהלקוח לא מצא בקטלוג
+                    </p>
+                    <p className="mt-1 whitespace-pre-wrap text-[14px] text-foreground">
+                      {request.missing_service_text}
+                    </p>
+                  </div>
+                ) : null}
               </div>
             </Section>
+
+            {request.questionnaire_answers.length ? (
+              <Section eyebrow="פרטים מותאמים" title="תשובות לשאלון">
+                <dl className="divide-y divide-border rounded-2xl border border-border bg-surface px-6 shadow-e1">
+                  {request.questionnaire_answers.map((item) => (
+                    <div key={item.question_id} className="py-4">
+                      <dt className="text-[12px] font-semibold text-muted-foreground">
+                        {item.prompt_he}
+                      </dt>
+                      <dd className="mt-1 whitespace-pre-wrap text-[14px] text-foreground">
+                        {formatQuestionnaireAnswer(item.answer)}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              </Section>
+            ) : null}
 
             <Section eyebrow="קבצים מצורפים" title="חומרים מהלקוח">
               <div className="rounded-2xl border border-border bg-surface p-6 shadow-e1 sm:p-8">
@@ -208,7 +241,7 @@ function SupplierRequestDetailsPage() {
                   className="p-6 sm:p-7"
                 />
               ) : ownOfferQuery.data ? (
-                <SupplierOwnOffer offer={ownOfferQuery.data} />
+                <SupplierOwnOffer offer={ownOfferQuery.data} canWithdraw />
               ) : request.status !== "open" ? (
                 <StateCard
                   icon={<Inbox className="h-5 w-5" />}
@@ -236,4 +269,11 @@ function MetaChip({ children }: { children: React.ReactNode }) {
       {children}
     </span>
   );
+}
+
+function formatQuestionnaireAnswer(answer: unknown) {
+  if (Array.isArray(answer)) return answer.map(String).join(", ");
+  if (typeof answer === "number") return new Intl.NumberFormat("he-IL").format(answer);
+  if (typeof answer === "string") return answer;
+  return "—";
 }

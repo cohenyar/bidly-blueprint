@@ -9,11 +9,20 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { supabase } from "@/integrations/supabase/client";
-import type { Database } from "@/integrations/supabase/types";
+import type { Database, Json } from "@/integrations/supabase/types";
 
 type RequestRow = Database["public"]["Tables"]["requests"]["Row"];
 type CategoryRow = Database["public"]["Tables"]["categories"]["Row"];
 type SubcategoryRow = Database["public"]["Tables"]["subcategories"]["Row"];
+type ServiceRow = Database["public"]["Tables"]["services"]["Row"];
+type ServiceAreaRow = Database["public"]["Tables"]["service_areas"]["Row"];
+
+export type SupplierQuestionnaireAnswer = {
+  question_id: string;
+  prompt_he: string;
+  field_type: string;
+  answer: Json;
+};
 
 export type SupplierMatchedRequest = Pick<
   RequestRow,
@@ -30,6 +39,11 @@ export type SupplierMatchedRequest = Pick<
 > & {
   category: Pick<CategoryRow, "id" | "name_he"> | null;
   subcategory: Pick<SubcategoryRow, "id" | "name_he"> | null;
+  service: Pick<ServiceRow, "id" | "name_he"> | null;
+  service_area: Pick<ServiceAreaRow, "id" | "name_he"> | null;
+  delivery_mode: "on_site" | "remote" | null;
+  missing_service_text: string | null;
+  questionnaire_answers: SupplierQuestionnaireAnswer[];
   match_created_at: string;
   match_status: "active";
 };
@@ -38,6 +52,9 @@ type ActiveSupplierRequestRpcRow =
   Database["public"]["Functions"]["get_active_supplier_requests"]["Returns"][number];
 
 function mapSupplierRequest(row: ActiveSupplierRequestRpcRow): SupplierMatchedRequest {
+  const questionnaireAnswers = Array.isArray(row.questionnaire_answers)
+    ? row.questionnaire_answers.filter(isQuestionnaireAnswer)
+    : [];
   return {
     id: row.id,
     title: row.title,
@@ -54,9 +71,33 @@ function mapSupplierRequest(row: ActiveSupplierRequestRpcRow): SupplierMatchedRe
       row.subcategory_id && row.subcategory_name_he
         ? { id: row.subcategory_id, name_he: row.subcategory_name_he }
         : null,
+    service:
+      row.service_id && row.service_name_he
+        ? { id: row.service_id, name_he: row.service_name_he }
+        : null,
+    service_area:
+      row.service_area_id && row.service_area_name_he
+        ? { id: row.service_area_id, name_he: row.service_area_name_he }
+        : null,
+    delivery_mode:
+      row.delivery_mode === "on_site" || row.delivery_mode === "remote" ? row.delivery_mode : null,
+    missing_service_text: row.missing_service_text,
+    questionnaire_answers: questionnaireAnswers,
     match_created_at: row.match_created_at,
     match_status: "active",
   };
+}
+
+function isQuestionnaireAnswer(value: Json): value is SupplierQuestionnaireAnswer {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    !Array.isArray(value) &&
+    typeof value.question_id === "string" &&
+    typeof value.prompt_he === "string" &&
+    typeof value.field_type === "string" &&
+    "answer" in value
+  );
 }
 
 export function useActiveMatchedRequests() {

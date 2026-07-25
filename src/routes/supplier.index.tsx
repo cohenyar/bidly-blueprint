@@ -5,12 +5,16 @@ import { PageContainer } from "@/components/app/PageContainer";
 import { ProfileCompletionPanel } from "@/components/app/ProfileCompletionPanel";
 import { Section } from "@/components/app/Section";
 import { ErrorState, LoadingState, StateCard } from "@/components/app/StateCard";
+import { SupplierEnhancementNotice } from "@/components/app/SupplierEnhancementNotice";
 import { SupplierMatchedRequestCard } from "@/components/app/SupplierMatchedRequestCard";
 import {
   computeCompletion,
   useMySupplierCategories,
   useMySupplierProfile,
+  useMySupplierServiceAreas,
+  useMySupplierServices,
   useMySupplierSubcategories,
+  useSupplierOnboardingState,
 } from "@/lib/supplier-profile";
 import { useActiveMatchedRequests } from "@/lib/supplier-requests";
 
@@ -23,21 +27,36 @@ function SupplierDashboardPage() {
   const profileQuery = useMySupplierProfile();
   const categoriesQuery = useMySupplierCategories();
   const subcategoriesQuery = useMySupplierSubcategories();
+  const servicesQuery = useMySupplierServices();
+  const areasQuery = useMySupplierServiceAreas();
+  const onboardingQuery = useSupplierOnboardingState();
   const matchesQuery = useActiveMatchedRequests();
 
   const loading =
     profileQuery.isLoading ||
     categoriesQuery.isLoading ||
     subcategoriesQuery.isLoading ||
+    servicesQuery.isLoading ||
+    areasQuery.isLoading ||
+    onboardingQuery.isLoading ||
     matchesQuery.isLoading;
   const error =
-    profileQuery.error ?? categoriesQuery.error ?? subcategoriesQuery.error ?? matchesQuery.error;
+    profileQuery.error ??
+    categoriesQuery.error ??
+    subcategoriesQuery.error ??
+    servicesQuery.error ??
+    areasQuery.error ??
+    onboardingQuery.error ??
+    matchesQuery.error;
 
   async function retry() {
     await Promise.all([
       profileQuery.refetch(),
       categoriesQuery.refetch(),
       subcategoriesQuery.refetch(),
+      servicesQuery.refetch(),
+      areasQuery.refetch(),
+      onboardingQuery.refetch(),
       matchesQuery.refetch(),
     ]);
   }
@@ -46,6 +65,9 @@ function SupplierDashboardPage() {
     profileQuery.data ?? null,
     categoriesQuery.data ?? [],
     subcategoriesQuery.data ?? [],
+    (servicesQuery.data ?? []).map((row) => row.service_id),
+    areasQuery.data ?? [],
+    onboardingQuery.data ?? null,
   );
   const matches = matchesQuery.data ?? [];
 
@@ -72,6 +94,7 @@ function SupplierDashboardPage() {
             <ErrorState error={error} onRetry={() => void retry()} />
           ) : (
             <div className="space-y-10">
+              <SupplierEnhancementNotice />
               <div className="grid gap-4 sm:grid-cols-2">
                 <SummaryCard
                   icon={<BriefcaseBusiness className="h-5 w-5" />}
