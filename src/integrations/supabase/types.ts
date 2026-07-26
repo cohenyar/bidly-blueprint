@@ -847,9 +847,21 @@ export type Database = {
         Args: { _supplier_id: string };
         Returns: boolean;
       };
+      _match_authorizes_supplier: {
+        Args: { _request_id: string; _supplier_id: string };
+        Returns: boolean;
+      };
       _notify_match_created: {
         Args: { _request_id: string; _supplier_id: string };
         Returns: undefined;
+      };
+      _reconcile_matches_for_request: {
+        Args: { _request_id: string };
+        Returns: number;
+      };
+      _supplier_has_valid_service_selection: {
+        Args: { _service_id?: string; _supplier_id: string };
+        Returns: boolean;
       };
       _supplier_serves_subcategory: {
         Args: { _subcategory_id: string; _supplier_id: string };
