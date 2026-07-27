@@ -883,6 +883,7 @@ export type Database = {
           title: string
         }[]
       }
+      get_or_create_request_draft: { Args: never; Returns: string }
       has_active_match: { Args: { _request_id: string }; Returns: boolean }
       has_role: {
         Args: {
