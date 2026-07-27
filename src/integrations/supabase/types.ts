@@ -838,6 +838,10 @@ export type Database = {
         Args: { _question_id: string; _request_id: string }
         Returns: boolean
       }
+      _supplier_matches_request_taxonomy: {
+        Args: { _request_id: string; _supplier_id: string }
+        Returns: boolean
+      }
       _supplier_serves_subcategory: {
         Args: { _subcategory_id: string; _supplier_id: string }
         Returns: boolean
@@ -868,7 +872,11 @@ export type Database = {
           description: string
           id: string
           match_created_at: string
+          missing_service_text: string
           published_at: string
+          questionnaire_answers: Json
+          service_id: string
+          service_name_he: string
           status: Database["public"]["Enums"]["request_status"]
           subcategory_id: string
           subcategory_name_he: string
