@@ -248,62 +248,192 @@ export type Database = {
           },
         ]
       }
+      request_question_answers: {
+        Row: {
+          answer: Json
+          created_at: string
+          definition_version: number
+          question_id: string
+          request_id: string
+          updated_at: string
+        }
+        Insert: {
+          answer: Json
+          created_at?: string
+          definition_version: number
+          question_id: string
+          request_id: string
+          updated_at?: string
+        }
+        Update: {
+          answer?: Json
+          created_at?: string
+          definition_version?: number
+          question_id?: string
+          request_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "request_question_answers_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "request_questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "request_question_answers_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      request_questions: {
+        Row: {
+          condition_operator: string | null
+          condition_question_id: string | null
+          condition_value: Json | null
+          created_at: string
+          definition_version: number
+          field_type: string
+          help_text_he: string | null
+          id: string
+          is_active: boolean
+          is_required: boolean
+          options: Json
+          prompt_he: string
+          service_id: string | null
+          sort_order: number
+          subcategory_id: string
+          updated_at: string
+        }
+        Insert: {
+          condition_operator?: string | null
+          condition_question_id?: string | null
+          condition_value?: Json | null
+          created_at?: string
+          definition_version?: number
+          field_type: string
+          help_text_he?: string | null
+          id?: string
+          is_active?: boolean
+          is_required?: boolean
+          options?: Json
+          prompt_he: string
+          service_id?: string | null
+          sort_order?: number
+          subcategory_id: string
+          updated_at?: string
+        }
+        Update: {
+          condition_operator?: string | null
+          condition_question_id?: string | null
+          condition_value?: Json | null
+          created_at?: string
+          definition_version?: number
+          field_type?: string
+          help_text_he?: string | null
+          id?: string
+          is_active?: boolean
+          is_required?: boolean
+          options?: Json
+          prompt_he?: string
+          service_id?: string | null
+          sort_order?: number
+          subcategory_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "request_questions_condition_question_id_fkey"
+            columns: ["condition_question_id"]
+            isOneToOne: false
+            referencedRelation: "request_questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "request_questions_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "request_questions_subcategory_id_fkey"
+            columns: ["subcategory_id"]
+            isOneToOne: false
+            referencedRelation: "subcategories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       requests: {
         Row: {
           budget_max: number | null
           budget_min: number | null
           budget_type: Database["public"]["Enums"]["budget_type"]
-          category_id: string
-          city: string
+          category_id: string | null
+          city: string | null
           closed_at: string | null
           created_at: string
           customer_id: string
-          description: string
+          description: string | null
           id: string
+          missing_service_text: string | null
           offers_count: number
-          published_at: string
+          published_at: string | null
+          schema_version: number
           selected_offer_id: string | null
+          service_id: string | null
           status: Database["public"]["Enums"]["request_status"]
           subcategory_id: string | null
-          title: string
+          title: string | null
           updated_at: string
         }
         Insert: {
           budget_max?: number | null
           budget_min?: number | null
           budget_type?: Database["public"]["Enums"]["budget_type"]
-          category_id: string
-          city: string
+          category_id?: string | null
+          city?: string | null
           closed_at?: string | null
           created_at?: string
           customer_id: string
-          description: string
+          description?: string | null
           id?: string
+          missing_service_text?: string | null
           offers_count?: number
-          published_at?: string
+          published_at?: string | null
+          schema_version?: number
           selected_offer_id?: string | null
+          service_id?: string | null
           status?: Database["public"]["Enums"]["request_status"]
           subcategory_id?: string | null
-          title: string
+          title?: string | null
           updated_at?: string
         }
         Update: {
           budget_max?: number | null
           budget_min?: number | null
           budget_type?: Database["public"]["Enums"]["budget_type"]
-          category_id?: string
-          city?: string
+          category_id?: string | null
+          city?: string | null
           closed_at?: string | null
           created_at?: string
           customer_id?: string
-          description?: string
+          description?: string | null
           id?: string
+          missing_service_text?: string | null
           offers_count?: number
-          published_at?: string
+          published_at?: string | null
+          schema_version?: number
           selected_offer_id?: string | null
+          service_id?: string | null
           status?: Database["public"]["Enums"]["request_status"]
           subcategory_id?: string | null
-          title?: string
+          title?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -319,6 +449,13 @@ export type Database = {
             columns: ["selected_offer_id"]
             isOneToOne: false
             referencedRelation: "offers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "requests_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
             referencedColumns: ["id"]
           },
           {
@@ -697,6 +834,10 @@ export type Database = {
         Args: { _request_id: string; _supplier_id: string }
         Returns: undefined
       }
+      _request_question_is_visible: {
+        Args: { _question_id: string; _request_id: string }
+        Returns: boolean
+      }
       _supplier_serves_subcategory: {
         Args: { _subcategory_id: string; _supplier_id: string }
         Returns: boolean
@@ -743,6 +884,7 @@ export type Database = {
         Returns: boolean
       }
       is_supplier_profile_complete: { Args: never; Returns: boolean }
+      publish_request: { Args: { _request_id: string }; Returns: string }
       submit_supplier_onboarding: { Args: never; Returns: boolean }
     }
     Enums: {
