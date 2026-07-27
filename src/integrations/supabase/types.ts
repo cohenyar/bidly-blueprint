@@ -530,6 +530,27 @@ export type Database = {
           reactivated: number
         }[]
       }
+      can_submit_offer: { Args: { _request_id: string }; Returns: boolean }
+      get_active_supplier_requests: {
+        Args: { _request_id?: string }
+        Returns: {
+          budget_max: number
+          budget_min: number
+          budget_type: Database["public"]["Enums"]["budget_type"]
+          category_id: string
+          category_name_he: string
+          city: string
+          created_at: string
+          description: string
+          id: string
+          match_created_at: string
+          published_at: string
+          status: Database["public"]["Enums"]["request_status"]
+          subcategory_id: string
+          subcategory_name_he: string
+          title: string
+        }[]
+      }
       has_active_match: { Args: { _request_id: string }; Returns: boolean }
       has_role: {
         Args: {
