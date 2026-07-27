@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
 
@@ -19,6 +19,7 @@ import {
   type BudgetType,
   type RequestDraftInput,
 } from "@/lib/requests";
+import { useRequestDraftAcquisition } from "@/lib/request-draft-acquisition";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/app/requests/new")({
@@ -48,8 +49,11 @@ const inputClass =
 function CreateRequestPage() {
   const navigate = useNavigate();
   const acquireDraft = useAcquireRequestDraft();
-  const acquireStarted = useRef(false);
-  const [draftId, setDraftId] = useState<string | null>(null);
+  const {
+    draftId,
+    error: acquireError,
+    retry: retryDraftAcquisition,
+  } = useRequestDraftAcquisition(acquireDraft.mutateAsync);
   const draftQuery = useRequest(draftId ?? "");
   const saveDraft = useSaveRequestDraft(draftId);
   const autosaveDraft = saveDraft.mutate;
@@ -89,14 +93,6 @@ function CreateRequestPage() {
       setQuestionnaireValid(true);
     }
   }, [categoryId, subcategoryId, subcategoriesQuery.isPending, subcategoriesQuery.data]);
-
-  useEffect(() => {
-    if (acquireStarted.current) return;
-    acquireStarted.current = true;
-    acquireDraft.mutate(undefined, {
-      onSuccess: setDraftId,
-    });
-  }, [acquireDraft]);
 
   useEffect(() => {
     if (!draftQuery.isSuccess || !draftQuery.data || initialized) return;
@@ -267,7 +263,11 @@ function CreateRequestPage() {
     categoriesQuery.isPending ||
     serviceAreasQuery.isPending;
   const initialError =
-    acquireDraft.error ?? draftQuery.error ?? categoriesQuery.error ?? serviceAreasQuery.error;
+    acquireError ??
+    acquireDraft.error ??
+    draftQuery.error ??
+    categoriesQuery.error ??
+    serviceAreasQuery.error;
 
   if (initialError) {
     return (
@@ -277,9 +277,8 @@ function CreateRequestPage() {
             error={initialError}
             onRetry={() => {
               acquireDraft.reset();
-              setDraftId(null);
               setInitialized(false);
-              acquireDraft.mutate(undefined, { onSuccess: setDraftId });
+              retryDraftAcquisition();
             }}
           />
         </div>

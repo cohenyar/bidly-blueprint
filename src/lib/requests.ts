@@ -163,7 +163,31 @@ export function useAcquireRequestDraft() {
   return useMutation({
     mutationFn: async () => {
       const { data, error } = await supabase.rpc("get_or_create_request_draft");
-      if (error) throw error;
+      if (error) {
+        if (import.meta.env.DEV) {
+          const diagnostic = {
+            rpc: "get_or_create_request_draft",
+            code: error.code,
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+          };
+
+          console.error("[Supabase RPC failed]", diagnostic);
+          throw new Error(
+            [
+              `RPC: ${diagnostic.rpc}`,
+              `Code: ${diagnostic.code ?? "unknown"}`,
+              `Message: ${diagnostic.message ?? "unknown"}`,
+              `Details: ${diagnostic.details ?? "none"}`,
+              `Hint: ${diagnostic.hint ?? "none"}`,
+            ].join("\n"),
+            { cause: error },
+          );
+        }
+
+        throw error;
+      }
       return data;
     },
     onSuccess: (requestId) => {
