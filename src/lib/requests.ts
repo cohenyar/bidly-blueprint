@@ -19,6 +19,18 @@ export type RequestWithCategory = RequestRow & {
   service_area: Pick<ServiceAreaRow, "id" | "slug" | "name_he"> | null;
 };
 
+type ProjectedService = Pick<ServiceRow, "id" | "slug" | "name_he"> & {
+  subcategory:
+    | (Pick<SubcategoryRow, "id" | "slug" | "name_he"> & {
+        category: Pick<CategoryRow, "id" | "slug" | "name_he"> | null;
+      })
+    | null;
+};
+
+type RequestProjectionRow = RequestRow & {
+  service: ProjectedService | null;
+};
+
 export const REQUEST_STATUS_LABEL: Record<RequestStatus, string> = {
   open: "פעילה",
   awarded: "נבחר נותן שירות",
@@ -36,8 +48,76 @@ export const REQUEST_STATUS_TONE: Record<
   cancelled: "danger",
 };
 
-const requestProjection =
-  "*, category:categories(id, slug, name_he), subcategory:subcategories(id, slug, name_he), service:services(id, slug, name_he), service_area:service_areas(id, slug, name_he)";
+// Restore the service_area embed after migrations 7–10 add requests.service_area_id.
+export const REQUEST_PROJECTION =
+  "*, service:services!requests_service_id_fkey(id, slug, name_he, subcategory:subcategories!services_subcategory_id_fkey(id, slug, name_he, category:categories!subcategories_category_id_fkey(id, slug, name_he)))";
+
+export function normalizeRequestProjection<
+  T extends {
+    service: ProjectedService | null;
+  },
+>(
+  row: T,
+): Omit<T, "service" | "service_area"> & {
+  category: Pick<CategoryRow, "id" | "slug" | "name_he"> | null;
+  subcategory: Pick<SubcategoryRow, "id" | "slug" | "name_he"> | null;
+  service: Pick<ServiceRow, "id" | "slug" | "name_he"> | null;
+  service_area: null;
+} {
+  const { service, ...request } = row;
+  const subcategory = service?.subcategory ?? null;
+
+  return {
+    ...request,
+    category: subcategory?.category ?? null,
+    subcategory: subcategory
+      ? {
+          id: subcategory.id,
+          slug: subcategory.slug,
+          name_he: subcategory.name_he,
+        }
+      : null,
+    service: service
+      ? {
+          id: service.id,
+          slug: service.slug,
+          name_he: service.name_he,
+        }
+      : null,
+    service_area: null,
+  };
+}
+
+function throwRequestProjectionError(error: {
+  code?: string;
+  message?: string;
+  details?: string;
+  hint?: string;
+}): never {
+  if (import.meta.env.DEV) {
+    const diagnostic = {
+      query: "requests.select(REQUEST_PROJECTION)",
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+    };
+
+    console.error("[Supabase request projection failed]", diagnostic);
+    throw new Error(
+      [
+        `Query: ${diagnostic.query}`,
+        `Code: ${diagnostic.code ?? "unknown"}`,
+        `Message: ${diagnostic.message ?? "unknown"}`,
+        `Details: ${diagnostic.details ?? "none"}`,
+        `Hint: ${diagnostic.hint ?? "none"}`,
+      ].join("\n"),
+      { cause: error },
+    );
+  }
+
+  throw error;
+}
 
 export function useCategories() {
   return useQuery({
@@ -133,11 +213,13 @@ export function useMyRequests() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("requests")
-        .select(requestProjection)
+        .select(REQUEST_PROJECTION)
         .not("published_at", "is", null)
         .order("created_at", { ascending: false });
-      if (error) throw error;
-      return (data ?? []) as RequestWithCategory[];
+      if (error) throwRequestProjectionError(error);
+      return (data ?? []).map((row) =>
+        normalizeRequestProjection(row as unknown as RequestProjectionRow),
+      );
     },
   });
 }
@@ -149,11 +231,11 @@ export function useRequest(id: string) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("requests")
-        .select(requestProjection)
+        .select(REQUEST_PROJECTION)
         .eq("id", id)
         .maybeSingle();
-      if (error) throw error;
-      return data as RequestWithCategory | null;
+      if (error) throwRequestProjectionError(error);
+      return data ? normalizeRequestProjection(data as unknown as RequestProjectionRow) : null;
     },
   });
 }
