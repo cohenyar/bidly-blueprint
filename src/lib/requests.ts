@@ -294,6 +294,90 @@ export type RequestDraftInput = {
   budget_max: number | null;
 };
 
+export type RequestPublishValidationErrors = Partial<
+  Record<"title" | "description" | "city" | "category_id" | "service" | "budget", string>
+>;
+
+// Compatibility flag for the managed schema through 20260725100000.
+// Remove this flag and restore delivery validation after migrations 7–10.
+export const CURRENT_REQUEST_SCHEMA_SUPPORTS_DELIVERY = false;
+
+export function isRequestPublishDisabled({
+  publishPending,
+  questionnairePending,
+  taxonomySaving,
+}: {
+  publishPending: boolean;
+  autosavePending: boolean;
+  questionnairePending: boolean;
+  taxonomySaving: boolean;
+}) {
+  return publishPending || questionnairePending || taxonomySaving;
+}
+
+// The managed backend currently stops at 20260725100000. Keep delivery choices
+// in form state, but do not persist columns added by 20260725111000 until the
+// remaining migrations are applied.
+export function buildRequestDraftUpdatePayload(input: RequestDraftInput) {
+  return {
+    title: input.title.trim() || null,
+    description: input.description.trim() || null,
+    city: input.city.trim() || null,
+    category_id: input.category_id || null,
+    subcategory_id: input.subcategory_id || null,
+    service_id: input.service_id || null,
+    missing_service_text: input.missing_service_text.trim() || null,
+    budget_type: input.budget_type,
+    budget_min: input.budget_min,
+    budget_max: input.budget_max,
+  } satisfies Database["public"]["Tables"]["requests"]["Update"];
+}
+
+export function validateRequestPublishFields(
+  input: RequestDraftInput,
+): RequestPublishValidationErrors {
+  const errors: RequestPublishValidationErrors = {};
+
+  if (input.title.trim().length < 3 || input.title.trim().length > 120) {
+    errors.title = "הכותרת חייבת להכיל 3–120 תווים.";
+  }
+  if (input.description.length > 4000) {
+    errors.description = "התיאור יכול להכיל עד 4,000 תווים.";
+  }
+  if (input.city.trim().length < 2 || input.city.trim().length > 80) {
+    errors.city = "יש להזין עיר תקינה.";
+  }
+  if (!input.category_id) {
+    errors.category_id = "יש לבחור קטגוריה.";
+  }
+  if (!input.service_id && input.missing_service_text.trim().length < 3) {
+    errors.service = "בחרו שירות או תארו את השירות שלא מצאתם.";
+  }
+
+  if (input.budget_type === "fixed") {
+    const amount = input.budget_min;
+    if (amount === null || !Number.isFinite(amount) || amount <= 0) {
+      errors.budget = "יש להזין סכום חיובי.";
+    }
+  } else if (input.budget_type === "range") {
+    const minimum = input.budget_min;
+    const maximum = input.budget_max;
+    if (
+      minimum === null ||
+      maximum === null ||
+      !Number.isFinite(minimum) ||
+      !Number.isFinite(maximum) ||
+      minimum <= 0 ||
+      maximum <= 0 ||
+      minimum > maximum
+    ) {
+      errors.budget = "יש להזין טווח תקציב תקין.";
+    }
+  }
+
+  return errors;
+}
+
 export function useSaveRequestDraft(requestId: string | null) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -301,23 +385,7 @@ export function useSaveRequestDraft(requestId: string | null) {
       if (!requestId) throw new Error("Draft is not ready");
       const { data, error } = await supabase
         .from("requests")
-        .update({
-          title: input.title.trim() || null,
-          description: input.description.trim() || null,
-          city: input.city.trim() || null,
-          category_id: input.category_id || null,
-          subcategory_id: input.subcategory_id || null,
-          service_id: input.service_id || null,
-          missing_service_text: input.missing_service_text.trim() || null,
-          delivery_mode: input.delivery_mode || null,
-          service_area_id:
-            input.delivery_mode === "on_site" && input.service_area_id
-              ? input.service_area_id
-              : null,
-          budget_type: input.budget_type,
-          budget_min: input.budget_min,
-          budget_max: input.budget_max,
-        })
+        .update(buildRequestDraftUpdatePayload(input))
         .eq("id", requestId)
         .is("published_at", null)
         .select("*")

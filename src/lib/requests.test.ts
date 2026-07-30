@@ -18,7 +18,15 @@ vi.mock("@/integrations/supabase/client", () => ({
   },
 }));
 
-import { normalizeRequestProjection, REQUEST_PROJECTION, useRequest } from "@/lib/requests";
+import {
+  buildRequestDraftUpdatePayload,
+  CURRENT_REQUEST_SCHEMA_SUPPORTS_DELIVERY,
+  isRequestPublishDisabled,
+  normalizeRequestProjection,
+  REQUEST_PROJECTION,
+  useRequest,
+  validateRequestPublishFields,
+} from "@/lib/requests";
 
 describe("request projection", () => {
   beforeEach(() => {
@@ -169,5 +177,141 @@ describe("request projection", () => {
       service: null,
       service_area: null,
     });
+  });
+});
+
+describe("request draft update compatibility", () => {
+  it("omits request delivery columns that are absent before migrations 7–10", () => {
+    const payload = buildRequestDraftUpdatePayload({
+      title: "  תיקון נזילה  ",
+      description: "  נדרשת בדיקה ותיקון של נזילה פעילה  ",
+      city: "  חיפה  ",
+      category_id: "category-1",
+      subcategory_id: "subcategory-1",
+      service_id: "service-1",
+      missing_service_text: "  ",
+      delivery_mode: "on_site",
+      service_area_id: "service-area-1",
+      budget_type: "range",
+      budget_min: 500,
+      budget_max: 1200,
+    });
+
+    expect(payload).toEqual({
+      title: "תיקון נזילה",
+      description: "נדרשת בדיקה ותיקון של נזילה פעילה",
+      city: "חיפה",
+      category_id: "category-1",
+      subcategory_id: "subcategory-1",
+      service_id: "service-1",
+      missing_service_text: null,
+      budget_type: "range",
+      budget_min: 500,
+      budget_max: 1200,
+    });
+    expect(payload).not.toHaveProperty("delivery_mode");
+    expect(payload).not.toHaveProperty("service_area_id");
+    expect(payload).not.toHaveProperty("matching_policy");
+  });
+
+  it("normalizes an empty optional description to null", () => {
+    const payload = buildRequestDraftUpdatePayload({
+      title: "תיקון נזילה",
+      description: "   ",
+      city: "חיפה",
+      category_id: "category-1",
+      subcategory_id: "subcategory-1",
+      service_id: "service-1",
+      missing_service_text: "",
+      delivery_mode: "",
+      service_area_id: "",
+      budget_type: "open",
+      budget_min: null,
+      budget_max: null,
+    });
+
+    expect(payload.description).toBeNull();
+  });
+});
+
+describe("request publish eligibility compatibility", () => {
+  const validInput = {
+    title: "תיקון נזילה",
+    description: "",
+    city: "חיפה",
+    category_id: "category-1",
+    subcategory_id: "subcategory-1",
+    service_id: "service-1",
+    missing_service_text: "",
+    delivery_mode: "" as const,
+    service_area_id: "",
+    budget_type: "open" as const,
+    budget_min: null,
+    budget_max: null,
+  };
+
+  it("allows publishing with an empty description", () => {
+    expect(validateRequestPublishFields(validInput)).toEqual({});
+  });
+
+  it("allows publishing with a populated description", () => {
+    expect(
+      validateRequestPublishFields({
+        ...validInput,
+        description: "קצר",
+      }),
+    ).toEqual({});
+  });
+
+  it("rejects a description longer than 4,000 characters", () => {
+    expect(
+      validateRequestPublishFields({
+        ...validInput,
+        description: "א".repeat(4001),
+      }),
+    ).toEqual({
+      description: "התיאור יכול להכיל עד 4,000 תווים.",
+    });
+  });
+
+  it("preserves every other basic publication requirement", () => {
+    expect(
+      validateRequestPublishFields({
+        ...validInput,
+        title: "",
+        city: "",
+        category_id: "",
+        service_id: "",
+        missing_service_text: "",
+      }),
+    ).toEqual({
+      title: "הכותרת חייבת להכיל 3–120 תווים.",
+      city: "יש להזין עיר תקינה.",
+      category_id: "יש לבחור קטגוריה.",
+      service: "בחרו שירות או תארו את השירות שלא מצאתם.",
+    });
+  });
+
+  it("does not require delivery fields before migrations 7–10", () => {
+    expect(CURRENT_REQUEST_SCHEMA_SUPPORTS_DELIVERY).toBe(false);
+  });
+
+  it("does not disable publishing for background autosave alone", () => {
+    expect(
+      isRequestPublishDisabled({
+        publishPending: false,
+        autosavePending: true,
+        questionnairePending: false,
+        taxonomySaving: false,
+      }),
+    ).toBe(false);
+  });
+
+  it.each([
+    { publishPending: true, questionnairePending: false, taxonomySaving: false },
+    { publishPending: false, questionnairePending: true, taxonomySaving: false },
+    { publishPending: false, questionnairePending: false, taxonomySaving: true },
+  ])("disables publishing during a required foreground operation", (state) => {
+    expect(isRequestPublishDisabled({ ...state, autosavePending: false })).toBe(true);
   });
 });

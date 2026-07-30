@@ -8,6 +8,8 @@ import { PageContainer } from "@/components/app/PageContainer";
 import { Section } from "@/components/app/Section";
 import { ErrorState, LoadingState } from "@/components/app/StateCard";
 import {
+  CURRENT_REQUEST_SCHEMA_SUPPORTS_DELIVERY,
+  isRequestPublishDisabled,
   useAcquireRequestDraft,
   useCategories,
   usePublishRequest,
@@ -16,6 +18,7 @@ import {
   useSaveRequestDraft,
   useServicesForProfession,
   useSubcategories,
+  validateRequestPublishFields,
   type BudgetType,
   type RequestDraftInput,
 } from "@/lib/requests";
@@ -187,52 +190,25 @@ function CreateRequestPage() {
   }
 
   function validate(): Errors {
-    const nextErrors: Errors = {};
-    if (title.trim().length < 3 || title.trim().length > 120) {
-      nextErrors.title = "הכותרת חייבת להכיל 3–120 תווים.";
-    }
-    if (description.trim().length < 20 || description.trim().length > 4000) {
-      nextErrors.description = "התיאור חייב להכיל 20–4,000 תווים.";
-    }
-    if (city.trim().length < 2 || city.trim().length > 80) {
-      nextErrors.city = "יש להזין עיר תקינה.";
-    }
-    if (!categoryId) nextErrors.category_id = "יש לבחור קטגוריה.";
+    const nextErrors: Errors = validateRequestPublishFields(draftInput);
     if ((subcategoriesQuery.data ?? []).length > 0 && !subcategoryId) {
       nextErrors.subcategory_id = "יש לבחור מקצוע.";
     }
-    if (!serviceId && missingServiceText.trim().length < 3) {
-      nextErrors.service = "בחרו שירות או תארו את השירות שלא מצאתם.";
-    }
-    if (!deliveryMode) {
+    if (CURRENT_REQUEST_SCHEMA_SUPPORTS_DELIVERY && !deliveryMode) {
       nextErrors.delivery_mode = "יש לבחור אם השירות נדרש במקום או מרחוק.";
-    } else if (deliveryMode === "on_site" && !serviceAreaId) {
+    } else if (
+      CURRENT_REQUEST_SCHEMA_SUPPORTS_DELIVERY &&
+      deliveryMode === "on_site" &&
+      !serviceAreaId
+    ) {
       nextErrors.service_area_id = "יש לבחור אזור שירות מנוהל.";
-    } else if (deliveryMode === "remote") {
+    } else if (CURRENT_REQUEST_SCHEMA_SUPPORTS_DELIVERY && deliveryMode === "remote") {
       const selectedService = servicesQuery.data?.find((service) => service.id === serviceId);
       if (!serviceId || !selectedService?.supports_remote) {
         nextErrors.service = "שירות מרחוק דורש שירות מנוהל שתומך בעבודה מרחוק.";
       }
       if (missingServiceText.trim()) {
         nextErrors.service = "לא ניתן להשתמש בשירות חסר עבור בקשה מרחוק.";
-      }
-    }
-    if (budgetType === "fixed") {
-      const amount = Number(budgetMin);
-      if (!Number.isFinite(amount) || amount <= 0) {
-        nextErrors.budget = "יש להזין סכום חיובי.";
-      }
-    } else if (budgetType === "range") {
-      const minimum = Number(budgetMin);
-      const maximum = Number(budgetMax);
-      if (
-        !Number.isFinite(minimum) ||
-        !Number.isFinite(maximum) ||
-        minimum <= 0 ||
-        maximum <= 0 ||
-        minimum > maximum
-      ) {
-        nextErrors.budget = "יש להזין טווח תקציב תקין.";
       }
     }
     if (!questionnaireValid) {
@@ -295,8 +271,12 @@ function CreateRequestPage() {
     );
   }
 
-  const publishing =
-    publishRequest.isPending || saveDraft.isPending || questionnairePending || taxonomySaving;
+  const publishing = isRequestPublishDisabled({
+    publishPending: publishRequest.isPending,
+    autosavePending: saveDraft.isPending,
+    questionnairePending,
+    taxonomySaving,
+  });
 
   return (
     <PageContainer>
@@ -514,10 +494,9 @@ function CreateRequestPage() {
               </Field>
 
               <Field
-                label="תיאור מפורט"
+                label="תיאור (אופציונלי)"
                 hint={`${description.trim().length}/4000 תווים`}
                 error={errors.description}
-                required
               >
                 <textarea
                   className={cn(inputClass, "h-40 py-3 leading-relaxed")}

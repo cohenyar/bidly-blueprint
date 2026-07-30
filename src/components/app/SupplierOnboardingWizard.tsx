@@ -108,6 +108,9 @@ export function SupplierOnboardingWizard() {
   const loading = allQueries.some((query) => query.isPending);
   const loadError = allQueries.find((query) => query.error)?.error;
   const isLegacy = stateQuery.data?.eligibility_policy === "legacy";
+  const availableServices = (servicesQuery.data ?? []).filter((service) =>
+    selectedProfessions.includes(service.subcategory_id),
+  );
 
   useEffect(() => {
     if (initialized || loading || loadError) return;
@@ -219,9 +222,6 @@ export function SupplierOnboardingWizard() {
             "business_type",
             "description",
             "base_city",
-            "service_mode",
-            "max_travel_km",
-            "remote_available",
             "starting_price_ils",
             "years_experience",
           ].includes(key),
@@ -262,24 +262,21 @@ export function SupplierOnboardingWizard() {
 
     if (currentStage === 3) {
       const validServices = selectedServices.filter((serviceId) => {
-        const service = servicesQuery.data?.find((row) => row.id === serviceId);
-        return service && selectedProfessions.includes(service.subcategory_id);
+        return availableServices.some((service) => service.id === serviceId);
       });
-      if (validServices.length === 0) {
-        setStageError(
-          servicesQuery.data?.length
-            ? "יש לבחור לפחות שירות אחד."
-            : "עדיין לא הוגדרו שירותים מנוהלים. לא ניתן להשלים הצטרפות חדשה עד לעדכון הקטלוג.",
-        );
+      if (availableServices.length > 0 && validServices.length === 0) {
+        setStageError("יש לבחור לפחות שירות אחד.");
         return false;
       }
-      await syncServices.mutateAsync({
-        selected: validServices,
-        current: savedServices.current,
-        services: servicesQuery.data ?? [],
-      });
-      savedServices.current = validServices;
-      setSelectedServices(validServices);
+      if (availableServices.length > 0) {
+        await syncServices.mutateAsync({
+          selected: validServices,
+          current: savedServices.current,
+          services: servicesQuery.data ?? [],
+        });
+        savedServices.current = validServices;
+        setSelectedServices(validServices);
+      }
     }
 
     if (currentStage === 4) {
@@ -291,20 +288,22 @@ export function SupplierOnboardingWizard() {
       ) as SupplierProfileErrors;
       setErrors(areaErrors);
       if (Object.keys(areaErrors).length) return false;
-      if (profile.service_mode !== "remote" && selectedAreas.length === 0) {
-        setStageError(
-          areasQuery.data?.length
-            ? "יש לבחור לפחות אזור שירות אחד."
-            : "עדיין לא הוגדרו אזורי שירות מנוהלים. לא ניתן להשלים הצטרפות חדשה עד לעדכון הרשימה.",
-        );
+      if (
+        profile.service_mode !== "remote" &&
+        (areasQuery.data ?? []).length > 0 &&
+        selectedAreas.length === 0
+      ) {
+        setStageError("יש לבחור לפחות אזור שירות אחד.");
         return false;
       }
       await saveProfile.mutateAsync(profile);
-      await syncAreas.mutateAsync({
-        selected: selectedAreas,
-        current: savedAreas.current,
-      });
-      savedAreas.current = selectedAreas;
+      if ((areasQuery.data ?? []).length > 0) {
+        await syncAreas.mutateAsync({
+          selected: selectedAreas,
+          current: savedAreas.current,
+        });
+        savedAreas.current = selectedAreas;
+      }
     }
 
     if (currentStage === 5) {
@@ -327,6 +326,21 @@ export function SupplierOnboardingWizard() {
       setSavedMessage("השלב נשמר.");
     } catch {
       setStageError("השמירה נכשלה. הפרטים נשארו במסך; נסו שוב בעוד רגע.");
+    }
+  }
+
+  async function moveBack() {
+    const previousStage = Math.max(1, stage - 1);
+    setErrors({});
+    setStageError(null);
+    setSavedMessage(null);
+    setStage(previousStage);
+
+    try {
+      await saveStage.mutateAsync(previousStage);
+      setSavedMessage("השלב נשמר.");
+    } catch {
+      setStageError("השלב הקודם נפתח, אך לא ניתן היה לשמור את מיקום ההצטרפות.");
     }
   }
 
@@ -446,10 +460,11 @@ export function SupplierOnboardingWizard() {
           {stage === 3 ? (
             <ChoiceGrid
               legend="שירותים מוצעים"
-              emptyMessage="עדיין לא הוגדרו שירותים מנוהלים במערכת."
-              options={(servicesQuery.data ?? [])
-                .filter((service) => selectedProfessions.includes(service.subcategory_id))
-                .map((service) => ({ id: service.id, label: service.name_he }))}
+              emptyMessage="עדיין לא הוגדרו שירותים מנוהלים למקצועות שבחרתם. ניתן להמשיך ולהוסיף שירותים לאחר עדכון הקטלוג."
+              options={availableServices.map((service) => ({
+                id: service.id,
+                label: service.name_he,
+              }))}
               selected={selectedServices}
               onToggle={(id) => toggleId(setSelectedServices, id)}
             />
@@ -502,7 +517,7 @@ export function SupplierOnboardingWizard() {
           <button
             type="button"
             disabled={busy || stage === 1}
-            onClick={() => void moveTo(stage - 1)}
+            onClick={() => void moveBack()}
             className="inline-flex h-10 items-center gap-1 rounded-lg border border-border px-4 text-[13px] font-semibold text-foreground disabled:opacity-50"
           >
             <ChevronRight className="h-4 w-4" />
@@ -803,7 +818,7 @@ function ServiceAreasStage({
       </fieldset>
       <ChoiceGrid
         legend="אזורי שירות מנוהלים"
-        emptyMessage="עדיין לא הוגדרו אזורי שירות מנוהלים במערכת."
+        emptyMessage="עדיין לא הוגדרו אזורי שירות מנוהלים. ניתן להשלים את ההרשמה ולעדכן אזורי שירות לאחר עדכון הקטלוג."
         options={areas.map((row) => ({ id: row.id, label: row.name_he }))}
         selected={selected}
         onToggle={onToggle}

@@ -36,6 +36,7 @@ export function DynamicRequestQuestionnaire({
   const deleteAnswer = useDeleteRequestQuestionAnswer(requestId);
   const [values, setValues] = useState<Record<string, Json | undefined>>({});
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [flushPending, setFlushPending] = useState(false);
   const loadedKeyRef = useRef("");
   const dirtyRef = useRef(new Map<string, Json | undefined>());
 
@@ -65,8 +66,9 @@ export function DynamicRequestQuestionnaire({
 
   useEffect(() => onValidityChange(valid), [onValidityChange, valid]);
 
-  const pending = dirtyRef.current.size > 0 || saveAnswer.isPending || deleteAnswer.isPending;
+  const pending = flushPending || saveAnswer.isPending || deleteAnswer.isPending;
   useEffect(() => onPendingChange(pending), [onPendingChange, pending]);
+  useEffect(() => () => onPendingChange(false), [onPendingChange]);
 
   useEffect(() => {
     if (dirtyRef.current.size === 0) return;
@@ -94,6 +96,8 @@ export function DynamicRequestQuestionnaire({
           }
         } catch {
           setSaveError("שמירת התשובות נכשלה. נסו שוב לפני הפרסום.");
+        } finally {
+          if (dirtyRef.current.size === 0) setFlushPending(false);
         }
       })();
     }, 600);
@@ -103,6 +107,7 @@ export function DynamicRequestQuestionnaire({
   function change(questionId: string, value: Json | undefined) {
     setValues((current) => ({ ...current, [questionId]: value }));
     dirtyRef.current.set(questionId, value);
+    setFlushPending(true);
   }
 
   if (!subcategoryId || questionsQuery.isPending || answersQuery.isPending) {
