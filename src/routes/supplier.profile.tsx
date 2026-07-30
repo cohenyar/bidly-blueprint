@@ -15,6 +15,7 @@ export function SupplierProfilePage() {
       <div className="py-10 sm:py-14">
         <Link
           to="/supplier"
+          aria-label="חזרה לאזור הספק"
           className="inline-flex items-center gap-1 text-[12px] font-semibold text-muted-foreground hover:text-foreground"
         >
           <ArrowRight className="h-3.5 w-3.5" />

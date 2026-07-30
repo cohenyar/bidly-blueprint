@@ -1,15 +1,26 @@
-import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { CompletionStatus } from "@/lib/supplier-profile";
+
+const navigationMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@tanstack/react-router", () => ({
   Link: ({
     children,
     to,
+    onClick,
     ...props
   }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { to: string }) => (
-    <a href={to} {...props}>
+    <a
+      href={to}
+      onClick={(event) => {
+        event.preventDefault();
+        onClick?.(event);
+        navigationMock(to);
+      }}
+      {...props}
+    >
       {children}
     </a>
   ),
@@ -36,9 +47,13 @@ const baseStatus: CompletionStatus = {
 };
 
 describe("ProfileCompletionPanel navigation", () => {
+  beforeEach(() => {
+    navigationMock.mockReset();
+  });
+
   afterEach(cleanup);
 
-  it("shows the completion action for an incomplete supplier and reuses the profile route", () => {
+  it("shows the completion action for an incomplete supplier and navigates to the profile route", () => {
     render(
       <div dir="rtl">
         <ProfileCompletionPanel status={baseStatus} />
@@ -48,6 +63,10 @@ describe("ProfileCompletionPanel navigation", () => {
     const action = screen.getByRole("link", { name: "חזרה להשלמת הפרופיל" });
     expect(action.getAttribute("href")).toBe("/supplier/profile");
     expect(action.closest("[dir='rtl']")).toBeTruthy();
+    expect(action.className).not.toContain("hidden");
+
+    fireEvent.click(action);
+    expect(navigationMock).toHaveBeenCalledWith("/supplier/profile");
   });
 
   it("shows the completion action when onboarding is not submitted even at 100 percent", () => {
@@ -64,5 +83,17 @@ describe("ProfileCompletionPanel navigation", () => {
     );
 
     expect(screen.queryByRole("link", { name: "חזרה להשלמת הפרופיל" })).toBeNull();
+  });
+
+  it("keeps the completion action rendered at mobile width", () => {
+    render(
+      <div dir="rtl" style={{ width: 320 }}>
+        <ProfileCompletionPanel status={baseStatus} />
+      </div>,
+    );
+
+    const action = screen.getByRole("link", { name: "חזרה להשלמת הפרופיל" });
+    expect(action.getAttribute("hidden")).toBeNull();
+    expect(action.className).not.toContain("hidden");
   });
 });
