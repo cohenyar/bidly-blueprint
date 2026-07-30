@@ -9,7 +9,7 @@ export const Route = createFileRoute("/supplier/profile")({
   head: () => ({ meta: [{ title: "פרופיל נותן שירות · Bidly" }] }),
 });
 
-function SupplierProfilePage() {
+export function SupplierProfilePage() {
   return (
     <PageContainer>
       <div className="py-10 sm:py-14">
@@ -18,7 +18,7 @@ function SupplierProfilePage() {
           className="inline-flex items-center gap-1 text-[12px] font-semibold text-muted-foreground hover:text-foreground"
         >
           <ArrowRight className="h-3.5 w-3.5" />
-          חזרה למרחב נותן השירות
+          חזרה לאזור הספק
         </Link>
 
         <div className="request-spine-navy mt-6 ps-5">

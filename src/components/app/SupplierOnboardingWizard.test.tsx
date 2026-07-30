@@ -105,6 +105,15 @@ describe("SupplierOnboardingWizard stage validation", () => {
     cleanup();
   });
 
+  it("loads previously saved profile fields without resetting them", () => {
+    render(<SupplierOnboardingWizard />);
+
+    expect(screen.getByDisplayValue("עסק לדוגמה")).toBeTruthy();
+    expect(screen.getByDisplayValue("עצמאי")).toBeTruthy();
+    expect(screen.getByDisplayValue("תיאור עסק מלא שמסביר היטב את השירות.")).toBeTruthy();
+    expect(screen.getByDisplayValue("חיפה")).toBeTruthy();
+  });
+
   it("advances a valid stage-1 profile while stage-4 fields are unset", async () => {
     render(<SupplierOnboardingWizard />);
 
