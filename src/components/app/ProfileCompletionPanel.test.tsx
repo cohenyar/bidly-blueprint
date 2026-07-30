@@ -75,14 +75,28 @@ describe("ProfileCompletionPanel navigation", () => {
     expect(screen.getByRole("link", { name: "חזרה להשלמת הפרופיל" })).toBeTruthy();
   });
 
-  it("hides the completion action for a fully completed and submitted supplier", () => {
+  it("shows the profile-change action for a fully completed and submitted supplier", () => {
     render(
       <ProfileCompletionPanel
         status={{ ...baseStatus, isSubmitted: true, isLegacy: false, percent: 100 }}
       />,
     );
 
-    expect(screen.queryByRole("link", { name: "חזרה להשלמת הפרופיל" })).toBeNull();
+    const action = screen.getByRole("link", { name: "שינוי פרופיל" });
+    expect(action.getAttribute("href")).toBe("/supplier/profile");
+
+    fireEvent.click(action);
+    expect(navigationMock).toHaveBeenCalledWith("/supplier/profile");
+  });
+
+  it("keeps the completion action for a submitted legacy supplier", () => {
+    render(
+      <ProfileCompletionPanel
+        status={{ ...baseStatus, isSubmitted: true, isLegacy: true, percent: 100 }}
+      />,
+    );
+
+    expect(screen.getByRole("link", { name: "חזרה להשלמת הפרופיל" })).toBeTruthy();
   });
 
   it("keeps the completion action rendered at mobile width", () => {

@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 
 export function ProfileCompletionPanel({ status }: { status: CompletionStatus }) {
   const complete = status.percent === 100;
-  const needsCompletion = status.percent < 100 || !status.isSubmitted || status.isLegacy;
+  const isComplete = complete && status.isSubmitted && !status.isLegacy;
 
   return (
     <div className="rounded-2xl border border-border bg-surface p-6 shadow-e1 sm:p-8">
@@ -62,17 +62,15 @@ export function ProfileCompletionPanel({ status }: { status: CompletionStatus })
         })}
       </ul>
 
-      {needsCompletion ? (
-        <div className="mt-5">
-          <Link
-            to="/supplier/profile"
-            aria-label="חזרה להשלמת הפרופיל"
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-[13px] font-semibold text-primary-foreground shadow-e1 hover:bg-primary-hover"
-          >
-            חזרה להשלמת הפרופיל
-          </Link>
-        </div>
-      ) : null}
+      <div className="mt-5">
+        <Link
+          to="/supplier/profile"
+          aria-label={isComplete ? "שינוי פרופיל" : "חזרה להשלמת הפרופיל"}
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-[13px] font-semibold text-primary-foreground shadow-e1 hover:bg-primary-hover"
+        >
+          {isComplete ? "שינוי פרופיל" : "חזרה להשלמת הפרופיל"}
+        </Link>
+      </div>
     </div>
   );
 }
