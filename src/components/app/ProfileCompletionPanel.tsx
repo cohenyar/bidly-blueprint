@@ -6,15 +6,6 @@ import { cn } from "@/lib/utils";
 
 export function ProfileCompletionPanel({ status }: { status: CompletionStatus }) {
   const complete = status.percent === 100;
-  const items: Array<{ key: keyof CompletionStatus; label: string }> = [
-    { key: "hasBusinessName", label: "שם עסק" },
-    { key: "hasDescription", label: "תיאור העסק" },
-    { key: "hasStructuredAreas", label: "אזורי שירות מנוהלים" },
-    { key: "hasCategories", label: "לפחות קטגוריה אחת" },
-    { key: "hasSubcategories", label: "לפחות מקצוע אחד" },
-    { key: "hasServices", label: "לפחות שירות אחד" },
-    { key: "isSubmitted", label: "בדיקה ושליחת הפרופיל" },
-  ];
 
   return (
     <div className="rounded-2xl border border-border bg-surface p-6 shadow-e1 sm:p-8">
@@ -49,11 +40,11 @@ export function ProfileCompletionPanel({ status }: { status: CompletionStatus })
       </div>
 
       <ul className="mt-5 grid gap-2 sm:grid-cols-2">
-        {items.map((item) => {
-          const completeItem = Boolean(status[item.key]);
+        {status.items.map((item) => {
+          const completeItem = item.complete;
           return (
             <li
-              key={item.key}
+              key={item.id}
               className={cn(
                 "flex items-center gap-2 rounded-lg border border-border bg-surface-muted/40 px-3 py-2 text-[13px]",
                 completeItem ? "text-foreground" : "text-muted-foreground",

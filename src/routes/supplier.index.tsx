@@ -9,11 +9,15 @@ import { SupplierEnhancementNotice } from "@/components/app/SupplierEnhancementN
 import { SupplierMatchedRequestCard } from "@/components/app/SupplierMatchedRequestCard";
 import {
   computeCompletion,
+  useCategoriesForSupplier,
   useMySupplierCategories,
+  useMySupplierProfessionSelections,
   useMySupplierProfile,
   useMySupplierServiceAreas,
   useMySupplierServices,
-  useMySupplierSubcategories,
+  useProfessionsForSupplier,
+  useServiceAreas,
+  useServices,
   useSupplierOnboardingState,
 } from "@/lib/supplier-profile";
 import { useActiveMatchedRequests } from "@/lib/supplier-requests";
@@ -25,8 +29,12 @@ export const Route = createFileRoute("/supplier/")({
 
 function SupplierDashboardPage() {
   const profileQuery = useMySupplierProfile();
+  const catalogCategoriesQuery = useCategoriesForSupplier();
+  const catalogProfessionsQuery = useProfessionsForSupplier();
+  const catalogServicesQuery = useServices();
+  const catalogAreasQuery = useServiceAreas();
   const categoriesQuery = useMySupplierCategories();
-  const subcategoriesQuery = useMySupplierSubcategories();
+  const professionsQuery = useMySupplierProfessionSelections();
   const servicesQuery = useMySupplierServices();
   const areasQuery = useMySupplierServiceAreas();
   const onboardingQuery = useSupplierOnboardingState();
@@ -34,16 +42,24 @@ function SupplierDashboardPage() {
 
   const loading =
     profileQuery.isLoading ||
+    catalogCategoriesQuery.isLoading ||
+    catalogProfessionsQuery.isLoading ||
+    catalogServicesQuery.isLoading ||
+    catalogAreasQuery.isLoading ||
     categoriesQuery.isLoading ||
-    subcategoriesQuery.isLoading ||
+    professionsQuery.isLoading ||
     servicesQuery.isLoading ||
     areasQuery.isLoading ||
     onboardingQuery.isLoading ||
     matchesQuery.isLoading;
   const error =
     profileQuery.error ??
+    catalogCategoriesQuery.error ??
+    catalogProfessionsQuery.error ??
+    catalogServicesQuery.error ??
+    catalogAreasQuery.error ??
     categoriesQuery.error ??
-    subcategoriesQuery.error ??
+    professionsQuery.error ??
     servicesQuery.error ??
     areasQuery.error ??
     onboardingQuery.error ??
@@ -52,8 +68,12 @@ function SupplierDashboardPage() {
   async function retry() {
     await Promise.all([
       profileQuery.refetch(),
+      catalogCategoriesQuery.refetch(),
+      catalogProfessionsQuery.refetch(),
+      catalogServicesQuery.refetch(),
+      catalogAreasQuery.refetch(),
       categoriesQuery.refetch(),
-      subcategoriesQuery.refetch(),
+      professionsQuery.refetch(),
       servicesQuery.refetch(),
       areasQuery.refetch(),
       onboardingQuery.refetch(),
@@ -61,13 +81,56 @@ function SupplierDashboardPage() {
     ]);
   }
 
+  const activeCategoryIds = new Set(
+    (catalogCategoriesQuery.data ?? [])
+      .filter((category) => category.is_active)
+      .map((category) => category.id),
+  );
+  const validCategoryIds = (categoriesQuery.data ?? []).filter((categoryId) =>
+    activeCategoryIds.has(categoryId),
+  );
+  const selectedProfessions = professionsQuery.data ?? [];
+  const validProfessions = (catalogProfessionsQuery.data ?? []).filter(
+    (profession) =>
+      profession.is_active &&
+      validCategoryIds.includes(profession.category_id) &&
+      selectedProfessions.some((selection) => selection.subcategory_id === profession.id),
+  );
+  const validProfessionIds = new Set(validProfessions.map((profession) => profession.id));
+  const availableServices = (catalogServicesQuery.data ?? []).filter(
+    (service) => service.is_active && validProfessionIds.has(service.subcategory_id),
+  );
+  const availableServiceIds = new Set(availableServices.map((service) => service.id));
+  const validServiceIds = (servicesQuery.data ?? [])
+    .filter(
+      (selection) =>
+        validProfessionIds.has(selection.subcategory_id) &&
+        availableServiceIds.has(selection.service_id) &&
+        availableServices.some(
+          (service) =>
+            service.id === selection.service_id &&
+            service.subcategory_id === selection.subcategory_id,
+        ),
+    )
+    .map((selection) => selection.service_id);
+  const activeAreaIds = new Set(
+    (catalogAreasQuery.data ?? []).filter((area) => area.is_active).map((area) => area.id),
+  );
+  const validAreaIds = (areasQuery.data ?? []).filter((areaId) => activeAreaIds.has(areaId));
   const completion = computeCompletion(
     profileQuery.data ?? null,
-    categoriesQuery.data ?? [],
-    subcategoriesQuery.data ?? [],
-    (servicesQuery.data ?? []).map((row) => row.service_id),
-    areasQuery.data ?? [],
+    validCategoryIds,
+    [...validProfessionIds],
+    validServiceIds,
+    validAreaIds,
     onboardingQuery.data ?? null,
+    {
+      hasPrimaryProfession: selectedProfessions.some(
+        (selection) => selection.is_primary && validProfessionIds.has(selection.subcategory_id),
+      ),
+      hasAvailableServices: availableServices.length > 0,
+      hasAvailableServiceAreas: activeAreaIds.size > 0,
+    },
   );
   const matches = matchesQuery.data ?? [];
 

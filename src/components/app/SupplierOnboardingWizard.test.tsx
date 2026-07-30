@@ -244,4 +244,23 @@ describe("SupplierOnboardingWizard stage validation", () => {
     expect(onboardingMock.syncAreas).not.toHaveBeenCalled();
     expect(onboardingMock.saveStage).not.toHaveBeenCalled();
   });
+
+  it("shows the backend diagnostic when final submission fails", async () => {
+    onboardingMock.currentStage = 6;
+    onboardingMock.submitOnboarding.mockRejectedValue({
+      code: "22000",
+      message: "Supplier onboarding is incomplete",
+      details: "A managed selection is missing",
+      hint: "Review active taxonomy selections",
+    });
+    render(<SupplierOnboardingWizard />);
+
+    fireEvent.click(screen.getByRole("button", { name: "שליחת הפרופיל" }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("קוד 22000");
+    expect(alert.textContent).toContain("Supplier onboarding is incomplete");
+    expect(alert.textContent).toContain("A managed selection is missing");
+    expect(alert.textContent).toContain("Review active taxonomy selections");
+  });
 });

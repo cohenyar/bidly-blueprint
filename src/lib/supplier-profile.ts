@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
+import { isPortfolioStoragePath, isValidHttpsPortfolioUrl } from "@/lib/supplier-portfolio";
 
 export type SupplierProfileRow = Database["public"]["Tables"]["supplier_profiles"]["Row"];
 export type SupplierOnboardingState =
@@ -23,9 +24,29 @@ export type SupplierProfileInput = {
   portfolio_links: string[];
 };
 
-const URL_RE = /^https?:\/\/\S+$/i;
-
 export type SupplierProfileErrors = Partial<Record<keyof SupplierProfileInput, string>>;
+
+export function formatSupplierOnboardingError(error: unknown): string {
+  const fallback = "לא ניתן להשלים את ההצטרפות. בדקו שכל השדות והבחירות נשמרו.";
+  if (!error || typeof error !== "object") return fallback;
+
+  const candidate = error as {
+    code?: unknown;
+    message?: unknown;
+    details?: unknown;
+    hint?: unknown;
+  };
+  const details = [candidate.message, candidate.details, candidate.hint]
+    .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+    .map((value) => value.trim());
+  const code =
+    typeof candidate.code === "string" && candidate.code.trim()
+      ? `קוד ${candidate.code.trim()}`
+      : null;
+  const diagnostic = [code, ...details].filter(Boolean).join(" · ");
+
+  return diagnostic ? `${fallback} פרטי השגיאה: ${diagnostic}` : fallback;
+}
 
 export function validateSupplierProfile(
   input: SupplierProfileInput,
@@ -92,8 +113,8 @@ export function validateSupplierProfile(
     errors.portfolio_links = "ניתן לשמור עד חמישה קישורי תיק עבודות.";
   }
   for (const link of input.portfolio_links) {
-    if (link.length > 500 || !URL_RE.test(link)) {
-      errors.portfolio_links = "כל קישור חייב להיות כתובת HTTP(S) תקינה.";
+    if (!isValidHttpsPortfolioUrl(link) && !isPortfolioStoragePath(link)) {
+      errors.portfolio_links = "יש להזין קישור HTTPS תקין או להעלות תמונה נתמכת.";
       break;
     }
   }
@@ -182,6 +203,7 @@ export function useCategoriesForSupplier() {
       const { data, error } = await supabase
         .from("categories")
         .select("*")
+        .eq("is_active", true)
         .order("sort_order")
         .order("name_he");
       if (error) throw error;
@@ -197,6 +219,7 @@ export function useProfessionsForSupplier() {
       const { data, error } = await supabase
         .from("subcategories")
         .select("*")
+        .eq("is_active", true)
         .order("sort_order")
         .order("name_he");
       if (error) throw error;
@@ -212,6 +235,7 @@ export function useServices() {
       const { data, error } = await supabase
         .from("services")
         .select("*")
+        .eq("is_active", true)
         .order("sort_order")
         .order("name_he");
       if (error) throw error;
@@ -227,6 +251,7 @@ export function useServiceAreas() {
       const { data, error } = await supabase
         .from("service_areas")
         .select("*")
+        .eq("is_active", true)
         .order("sort_order")
         .order("name_he");
       if (error) throw error;
@@ -502,14 +527,38 @@ export type CompletionStatus = {
   hasProfile: boolean;
   hasBusinessName: boolean;
   hasDescription: boolean;
+  hasBusinessDetails: boolean;
   hasServiceArea: boolean;
   hasCategories: boolean;
   hasSubcategories: boolean;
   hasServices: boolean;
   hasStructuredAreas: boolean;
+  hasAvailableServices: boolean;
+  hasAvailableServiceAreas: boolean;
   isSubmitted: boolean;
   isLegacy: boolean;
   percent: number;
+  items: CompletionItem[];
+};
+
+export type CompletionItem = {
+  id:
+    | "business-name"
+    | "description"
+    | "business-details"
+    | "categories"
+    | "primary-profession"
+    | "services"
+    | "service-areas"
+    | "submitted";
+  label: string;
+  complete: boolean;
+};
+
+export type CompletionCatalogState = {
+  hasPrimaryProfession: boolean;
+  hasAvailableServices: boolean;
+  hasAvailableServiceAreas: boolean;
 };
 
 export function computeCompletion(
@@ -519,38 +568,95 @@ export function computeCompletion(
   serviceIds: string[] = [],
   areaIds: string[] = [],
   onboarding: SupplierOnboardingState | null = null,
+  catalogState: CompletionCatalogState = {
+    hasPrimaryProfession: subcategoryIds.length > 0,
+    hasAvailableServices: true,
+    hasAvailableServiceAreas: true,
+  },
 ): CompletionStatus {
   const isLegacy = onboarding?.eligibility_policy === "legacy";
-  const hasBusinessName = (profile?.business_name.trim().length ?? 0) >= 2;
-  const hasDescription = (profile?.description.trim().length ?? 0) >= 20;
+  const businessNameLength = profile?.business_name.trim().length ?? 0;
+  const descriptionLength = profile?.description.trim().length ?? 0;
+  const businessTypeLength = profile?.business_type?.trim().length ?? 0;
+  const baseCityLength = profile?.base_city?.trim().length ?? 0;
+  const hasBusinessName = businessNameLength >= 2 && businessNameLength <= 80;
+  const hasDescription = descriptionLength >= 20 && descriptionLength <= 1000;
+  const hasBusinessDetails =
+    businessTypeLength >= 2 &&
+    businessTypeLength <= 80 &&
+    baseCityLength >= 2 &&
+    baseCityLength <= 80 &&
+    (profile?.service_mode === "on_site" ||
+      profile?.service_mode === "remote" ||
+      profile?.service_mode === "both") &&
+    profile.remote_available !== null &&
+    (profile.service_mode === "remote" ||
+      (profile.max_travel_km !== null &&
+        profile.max_travel_km >= 0 &&
+        profile.max_travel_km <= 500)) &&
+    (profile.service_mode === "on_site" || profile.remote_available);
   const hasServiceArea = (profile?.service_area.trim().length ?? 0) >= 2;
   const hasCategories = categoryIds.length > 0;
-  const hasSubcategories = subcategoryIds.length > 0;
-  const hasServices = serviceIds.length > 0;
-  const hasStructuredAreas = profile?.service_mode === "remote" || areaIds.length > 0;
+  const hasSubcategories = subcategoryIds.length > 0 && catalogState.hasPrimaryProfession;
+  const hasServices = !catalogState.hasAvailableServices || serviceIds.length > 0;
+  const hasStructuredAreas =
+    profile?.service_mode === "remote" ||
+    !catalogState.hasAvailableServiceAreas ||
+    areaIds.length > 0;
   const isSubmitted =
     onboarding?.eligibility_policy === "current" && Boolean(onboarding.submitted_at);
-  const checks = [
-    hasBusinessName,
-    hasDescription,
-    Boolean(profile?.business_type && profile.base_city && profile.service_mode),
-    hasCategories,
-    hasSubcategories,
-    hasServices,
-    hasStructuredAreas,
-    isSubmitted,
+  const items: CompletionItem[] = [
+    { id: "business-name", label: "שם עסק", complete: hasBusinessName },
+    { id: "description", label: "תיאור העסק", complete: hasDescription },
+    {
+      id: "business-details",
+      label: "סוג עסק, עיר בסיס ואופן שירות",
+      complete: hasBusinessDetails,
+    },
+    { id: "categories", label: "לפחות קטגוריה פעילה אחת", complete: hasCategories },
+    { id: "primary-profession", label: "מקצוע ראשי פעיל", complete: hasSubcategories },
+    {
+      id: "services",
+      label: catalogState.hasAvailableServices
+        ? "לפחות שירות פעיל אחד"
+        : "אין שירותים זמינים בקטלוג — לא נדרשת בחירה",
+      complete: hasServices,
+    },
   ];
+
+  if (profile?.service_mode === "on_site" || profile?.service_mode === "both") {
+    items.push({
+      id: "service-areas",
+      label: catalogState.hasAvailableServiceAreas
+        ? "לפחות אזור שירות פעיל אחד"
+        : "אין אזורי שירות זמינים — לא נדרשת בחירה",
+      complete: hasStructuredAreas,
+    });
+  }
+
+  items.push({
+    id: "submitted",
+    label: "בדיקה ושליחת הפרופיל",
+    complete: isSubmitted,
+  });
+
   return {
     hasProfile: profile !== null,
     hasBusinessName,
     hasDescription,
+    hasBusinessDetails,
     hasServiceArea,
     hasCategories,
     hasSubcategories,
     hasServices,
     hasStructuredAreas,
+    hasAvailableServices: catalogState.hasAvailableServices,
+    hasAvailableServiceAreas: catalogState.hasAvailableServiceAreas,
     isSubmitted,
     isLegacy,
-    percent: Math.round((checks.filter(Boolean).length / checks.length) * 100),
+    percent: items.length
+      ? Math.round((items.filter((item) => item.complete).length / items.length) * 100)
+      : 0,
+    items,
   };
 }

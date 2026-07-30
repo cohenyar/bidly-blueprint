@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, ChevronLeft, ChevronRight, ExternalLink, Plus, Trash2 } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 
+import { SupplierPortfolioEditor } from "@/components/app/SupplierPortfolioEditor";
 import { ErrorState, LoadingState } from "@/components/app/StateCard";
 import {
+  formatSupplierOnboardingError,
   useCategoriesForSupplier,
   useMySupplierCategories,
   useMySupplierProfessionSelections,
@@ -353,8 +355,8 @@ export function SupplierOnboardingWizard() {
           ? "הפרופיל המעודכן נשלח. התאמות חדשות הופעלו לפי הבחירות המנוהלות."
           : "הפרופיל נשלח והושלם בהצלחה.",
       );
-    } catch {
-      setStageError("לא ניתן להשלים את ההצטרפות. בדקו שכל השדות והבחירות נשמרו.");
+    } catch (error) {
+      setStageError(formatSupplierOnboardingError(error));
     }
   }
 
@@ -845,52 +847,12 @@ function PortfolioStage({
   patch: (patch: Partial<SupplierProfileInput>) => void;
   errors: SupplierProfileErrors;
 }) {
-  function update(index: number, value: string) {
-    const links = [...profile.portfolio_links];
-    links[index] = value;
-    patch({ portfolio_links: links });
-  }
   return (
-    <div>
-      <p className="text-[13px] text-muted-foreground">
-        שלב זה אופציונלי. ניתן להוסיף עד חמישה קישורים לעבודות קיימות.
-      </p>
-      <div className="mt-4 space-y-3">
-        {profile.portfolio_links.map((link, index) => (
-          <div key={index} className="flex gap-2">
-            <ExternalLink className="mt-4 h-4 w-4 shrink-0 text-muted-foreground" />
-            <input
-              type="url"
-              className={inputClass}
-              value={link}
-              onChange={(event) => update(index, event.target.value)}
-              placeholder="https://"
-              dir="ltr"
-            />
-            <button
-              type="button"
-              aria-label="הסרת קישור"
-              onClick={() =>
-                patch({ portfolio_links: profile.portfolio_links.filter((_, i) => i !== index) })
-              }
-              className="mt-1.5 grid h-11 w-11 place-items-center rounded-lg border border-border text-danger"
-            >
-              <Trash2 className="h-4 w-4" />
-            </button>
-          </div>
-        ))}
-      </div>
-      {errors.portfolio_links ? <p className={errorClass}>{errors.portfolio_links}</p> : null}
-      <button
-        type="button"
-        disabled={profile.portfolio_links.length >= 5}
-        onClick={() => patch({ portfolio_links: [...profile.portfolio_links, ""] })}
-        className="mt-4 inline-flex h-10 items-center gap-1 rounded-lg border border-border px-4 text-[13px] font-semibold disabled:opacity-50"
-      >
-        <Plus className="h-4 w-4" />
-        הוספת קישור
-      </button>
-    </div>
+    <SupplierPortfolioEditor
+      items={profile.portfolio_links}
+      onChange={(portfolioLinks) => patch({ portfolio_links: portfolioLinks })}
+      error={errors.portfolio_links}
+    />
   );
 }
 
@@ -918,7 +880,7 @@ function ReviewStage({
     ["אזורי שירות", areaNames.join(", ") || profile.service_area || "לא נבחרו"],
     [
       "תיק עבודות",
-      profile.portfolio_links.length ? `${profile.portfolio_links.length} קישורים` : "ללא",
+      profile.portfolio_links.length ? `${profile.portfolio_links.length} פריטים` : "ללא",
     ],
   ];
   return (
