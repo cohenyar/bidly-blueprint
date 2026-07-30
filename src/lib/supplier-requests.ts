@@ -24,7 +24,13 @@ export type SupplierQuestionnaireAnswer = {
   answer: Json;
 };
 
-export type SupplierMatchedRequest = Pick<
+export const MATCH_SCORE_THRESHOLDS = [50, 70, 80, 90] as const;
+
+export type MatchScoreThreshold = (typeof MATCH_SCORE_THRESHOLDS)[number];
+export type MatchLevel = "התאמה מעולה" | "התאמה גבוהה" | "התאמה בינונית";
+export type MatchStrength = "strong" | "weak";
+
+export type SupplierRequestDetail = Pick<
   RequestRow,
   | "id"
   | "title"
@@ -48,13 +54,27 @@ export type SupplierMatchedRequest = Pick<
   match_status: "active";
 };
 
+export type SupplierMatchedRequest = SupplierRequestDetail & {
+  match_score: number;
+  match_level: MatchLevel;
+  match_strength: MatchStrength;
+  match_explanations: string[];
+  match_badges: string[];
+};
+
 type ActiveSupplierRequestRpcRow =
   Database["public"]["Functions"]["get_active_supplier_requests"]["Returns"][number];
+type SmartSupplierRequestRpcRow =
+  Database["public"]["Functions"]["get_smart_supplier_requests"]["Returns"][number];
+type SupplierRequestProjectionRow = ActiveSupplierRequestRpcRow | SmartSupplierRequestRpcRow;
 
-function mapSupplierRequest(row: ActiveSupplierRequestRpcRow): SupplierMatchedRequest {
+function mapSupplierRequest(row: SupplierRequestProjectionRow): SupplierRequestDetail {
   const questionnaireAnswers = Array.isArray(row.questionnaire_answers)
     ? row.questionnaire_answers.filter(isQuestionnaireAnswer)
     : [];
+  const serviceAreaId = "service_area_id" in row ? row.service_area_id : null;
+  const serviceAreaName = "service_area_name_he" in row ? row.service_area_name_he : null;
+  const deliveryMode = "delivery_mode" in row ? row.delivery_mode : null;
   return {
     id: row.id,
     title: row.title,
@@ -76,15 +96,23 @@ function mapSupplierRequest(row: ActiveSupplierRequestRpcRow): SupplierMatchedRe
         ? { id: row.service_id, name_he: row.service_name_he }
         : null,
     service_area:
-      row.service_area_id && row.service_area_name_he
-        ? { id: row.service_area_id, name_he: row.service_area_name_he }
-        : null,
-    delivery_mode:
-      row.delivery_mode === "on_site" || row.delivery_mode === "remote" ? row.delivery_mode : null,
+      serviceAreaId && serviceAreaName ? { id: serviceAreaId, name_he: serviceAreaName } : null,
+    delivery_mode: deliveryMode === "on_site" || deliveryMode === "remote" ? deliveryMode : null,
     missing_service_text: row.missing_service_text,
     questionnaire_answers: questionnaireAnswers,
     match_created_at: row.match_created_at,
     match_status: "active",
+  };
+}
+
+export function mapSmartSupplierRequest(row: SmartSupplierRequestRpcRow): SupplierMatchedRequest {
+  return {
+    ...mapSupplierRequest(row),
+    match_score: Math.max(0, Math.min(100, row.match_score)),
+    match_level: isMatchLevel(row.match_level) ? row.match_level : "התאמה בינונית",
+    match_strength: row.match_strength === "strong" ? "strong" : "weak",
+    match_explanations: toStringArray(row.match_explanations),
+    match_badges: toStringArray(row.match_badges),
   };
 }
 
@@ -100,13 +128,25 @@ function isQuestionnaireAnswer(value: Json): value is SupplierQuestionnaireAnswe
   );
 }
 
-export function useActiveMatchedRequests() {
+function isMatchLevel(value: string): value is MatchLevel {
+  return value === "התאמה מעולה" || value === "התאמה גבוהה" || value === "התאמה בינונית";
+}
+
+function toStringArray(value: Json): string[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : [];
+}
+
+export function useActiveMatchedRequests(minimumScore: MatchScoreThreshold = 50) {
   return useQuery({
-    queryKey: ["supplier-matched-requests", "active"],
+    queryKey: ["supplier-matched-requests", "active", minimumScore],
     queryFn: async (): Promise<SupplierMatchedRequest[]> => {
-      const { data, error } = await supabase.rpc("get_active_supplier_requests");
+      const { data, error } = await supabase.rpc("get_smart_supplier_requests", {
+        _minimum_score: minimumScore,
+      });
       if (error) throw error;
-      return (data ?? []).map(mapSupplierRequest);
+      return (data ?? []).map(mapSmartSupplierRequest);
     },
   });
 }
@@ -115,7 +155,7 @@ export function useActiveMatchedRequest(id: string) {
   return useQuery({
     queryKey: ["supplier-matched-request", id],
     enabled: Boolean(id),
-    queryFn: async (): Promise<SupplierMatchedRequest | null> => {
+    queryFn: async (): Promise<SupplierRequestDetail | null> => {
       const { data, error } = await supabase.rpc("get_active_supplier_requests", {
         _request_id: id,
       });

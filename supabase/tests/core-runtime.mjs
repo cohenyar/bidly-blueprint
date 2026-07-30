@@ -164,6 +164,29 @@ async function activeRequestIds(supplier) {
   return rows.map((row) => row.id);
 }
 
+async function smartRequests(supplier, minimumScore = 50) {
+  return must(
+    supplier.client.rpc("get_smart_supplier_requests", {
+      _minimum_score: minimumScore,
+    }),
+    "read Smart Supplier Requests",
+  );
+}
+
+async function forceActiveMatch(supplierId, requestId, label) {
+  await must(
+    admin.from("matches").upsert(
+      {
+        supplier_id: supplierId,
+        request_id: requestId,
+        status: "active",
+      },
+      { onConflict: "supplier_id,request_id" },
+    ),
+    label,
+  );
+}
+
 async function createTaxonomyFixture() {
   const slug = runId.replace(/[^a-z0-9]/gi, "").toLowerCase();
   const categoryA = await must(
@@ -297,6 +320,10 @@ async function assertTaxonomyMatchVisible(supplier, requestId, label) {
     `${label}: inspect active Match`,
   );
   assert.equal(match.status, "active", `${label}: Match should be active`);
+  assert(
+    (await smartRequests(supplier)).some((request) => request.id === requestId),
+    `${label}: Smart projection should include the authorized Request`,
+  );
 }
 
 async function assertTaxonomyMatchInvalidated(supplier, requestId, storagePath, label) {
@@ -314,6 +341,10 @@ async function assertTaxonomyMatchInvalidated(supplier, requestId, storagePath, 
     `${label}: inspect inactive Match`,
   );
   assert.equal(match.status, "inactive", `${label}: Match should be inactive`);
+  assert(
+    !(await smartRequests(supplier)).some((request) => request.id === requestId),
+    `${label}: Smart projection must exclude the invalidated Request`,
+  );
 
   const attachmentRows = await must(
     supplier.client.from("request_attachments").select("id").eq("request_id", requestId),
@@ -477,6 +508,111 @@ async function run() {
   assert(!(await activeRequestIds(supplierOut)).includes(onsiteRequestId));
   assert(!(await activeRequestIds(supplierRemote)).includes(onsiteRequestId));
 
+  const exactServiceMatches = await smartRequests(supplierInA);
+  const exactServiceMatch = exactServiceMatches.find((request) => request.id === onsiteRequestId);
+  assert(exactServiceMatch, "exact-Service Smart Match should be visible");
+  assert.equal(exactServiceMatch.match_score, 100);
+  assert.equal(exactServiceMatch.match_level, "התאמה מעולה");
+  assert(exactServiceMatch.match_badges.includes("⭐ התאמה מעולה"));
+  assert(exactServiceMatch.match_badges.includes("🔥 שירות מדויק"));
+  assert(exactServiceMatch.match_badges.includes("📍 באזור השירות שלך"));
+  await forceActiveMatch(
+    supplierOut.id,
+    onsiteRequestId,
+    "force outside-area Match for Smart visibility gate",
+  );
+  assert(
+    !(await smartRequests(supplierOut)).some((request) => request.id === onsiteRequestId),
+    "outside-area Supplier must not receive the on-site Request",
+  );
+  await must(
+    admin
+      .from("matches")
+      .update({ status: "inactive" })
+      .eq("supplier_id", supplierOut.id)
+      .eq("request_id", onsiteRequestId),
+    "remove forced outside-area Match",
+  );
+
+  await must(
+    admin
+      .from("supplier_profiles")
+      .update({
+        service_mode: "remote",
+        remote_available: true,
+        max_travel_km: null,
+      })
+      .eq("user_id", supplierInB.id),
+    "make Supplier mode incompatible with on-site Request",
+  );
+  await forceActiveMatch(
+    supplierInB.id,
+    onsiteRequestId,
+    "force wrong-mode Match for Smart visibility gate",
+  );
+  assert(
+    !(await smartRequests(supplierInB)).some((request) => request.id === onsiteRequestId),
+    "on-site Request must be omitted for a remote-only Supplier",
+  );
+  await must(
+    admin
+      .from("supplier_profiles")
+      .update({
+        service_mode: "on_site",
+        remote_available: false,
+        max_travel_km: 25,
+      })
+      .eq("user_id", supplierInB.id),
+    "restore on-site Supplier mode",
+  );
+  await forceActiveMatch(supplierInB.id, onsiteRequestId, "restore valid on-site Match");
+
+  const professionOnlyRequestId = await acquireDraft(customerA);
+  await saveDraft(customerA, professionOnlyRequestId, {
+    category_id: env.CORE_TEST_CATEGORY_ID,
+    subcategory_id: env.CORE_TEST_SUBCATEGORY_ID,
+    service_id: null,
+    missing_service_text: "שירות מקצועי מותאם לבדיקה",
+    delivery_mode: "on_site",
+    service_area_id: env.CORE_TEST_AREA_IN_ID,
+    title: "Core profession-only request",
+    description: "Disposable profession-only Request for deterministic Smart Match scoring.",
+    city: "Display city only",
+    budget_type: "open",
+    budget_min: null,
+    budget_max: null,
+  });
+  await must(
+    customerA.client.rpc("publish_request", {
+      _request_id: professionOnlyRequestId,
+    }),
+    "publish profession-only Request",
+  );
+  const sortedSmartMatches = await smartRequests(supplierInA);
+  const professionOnlyMatch = sortedSmartMatches.find(
+    (request) => request.id === professionOnlyRequestId,
+  );
+  assert(professionOnlyMatch, "profession-only Smart Match should be visible");
+  assert.equal(professionOnlyMatch.match_score, 75);
+  assert.equal(professionOnlyMatch.match_level, "התאמה גבוהה");
+  assert(
+    sortedSmartMatches.findIndex((request) => request.id === onsiteRequestId) <
+      sortedSmartMatches.findIndex((request) => request.id === professionOnlyRequestId),
+    "Smart Matches must sort by highest score first",
+  );
+  assert(
+    !(await smartRequests(supplierInA, 80)).some(
+      (request) => request.id === professionOnlyRequestId,
+    ),
+    "80% filter must exclude a 75% Match",
+  );
+  assert(
+    (await smartRequests(supplierInA, 70)).some(
+      (request) => request.id === professionOnlyRequestId,
+    ),
+    "70% filter must include a 75% Match",
+  );
+
   await mustDeny(
     supplierOut.client.rpc("submit_offer", {
       _request_id: onsiteRequestId,
@@ -592,6 +728,37 @@ async function run() {
   );
   assert((await activeRequestIds(supplierRemote)).includes(remoteRequestId));
   assert(!(await activeRequestIds(supplierInA)).includes(remoteRequestId));
+  const remoteSmartMatch = (await smartRequests(supplierRemote)).find(
+    (request) => request.id === remoteRequestId,
+  );
+  assert(remoteSmartMatch, "remote-compatible Smart Match should be visible");
+  assert.equal(remoteSmartMatch.match_score, 100);
+  assert(remoteSmartMatch.match_badges.includes("⭐ התאמה מעולה"));
+  assert(remoteSmartMatch.match_badges.includes("💻 עבודה מרחוק"));
+  await must(
+    admin
+      .from("supplier_profiles")
+      .update({ remote_available: false })
+      .eq("user_id", supplierRemote.id),
+    "disable Supplier remote availability",
+  );
+  await forceActiveMatch(
+    supplierRemote.id,
+    remoteRequestId,
+    "force remote-unavailable Match for Smart visibility gate",
+  );
+  assert(
+    !(await smartRequests(supplierRemote)).some((request) => request.id === remoteRequestId),
+    "remote Request must be omitted when remote availability is false",
+  );
+  await must(
+    admin
+      .from("supplier_profiles")
+      .update({ remote_available: true })
+      .eq("user_id", supplierRemote.id),
+    "restore Supplier remote availability",
+  );
+  await forceActiveMatch(supplierRemote.id, remoteRequestId, "restore valid remote Match");
 
   await must(legacy.client.rpc("submit_supplier_onboarding"), "explicit legacy transition");
   const legacyState = await must(
@@ -690,6 +857,12 @@ async function run() {
   assert(
     !(await activeRequestIds(taxonomySupplier)).includes(unrelatedTaxonomyRequestId),
     "Supplier must not match an unselected taxonomy chain",
+  );
+  assert(
+    !(await smartRequests(taxonomySupplier)).some(
+      (request) => request.id === unrelatedTaxonomyRequestId,
+    ),
+    "wrong-category Request must not appear in the Smart projection",
   );
 
   await must(
@@ -864,6 +1037,17 @@ async function run() {
   assert(
     !(await activeRequestIds(taxonomySupplier)).includes(remoteTaxonomyRequestId),
     "remote-support removal must remove the remote Request from the projection",
+  );
+  await forceActiveMatch(
+    taxonomySupplier.id,
+    remoteTaxonomyRequestId,
+    "force non-remote-Service Match for Smart visibility gate",
+  );
+  assert(
+    !(await smartRequests(taxonomySupplier)).some(
+      (request) => request.id === remoteTaxonomyRequestId,
+    ),
+    "remote Request must be omitted when its exact Service does not support remote work",
   );
   await assertTaxonomyMatchVisible(
     taxonomySupplier,

@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { BriefcaseBusiness, CheckCircle2, Inbox } from "lucide-react";
+import { useState } from "react";
 
 import { PageContainer } from "@/components/app/PageContainer";
 import { ProfileCompletionPanel } from "@/components/app/ProfileCompletionPanel";
@@ -20,7 +21,11 @@ import {
   useServices,
   useSupplierOnboardingState,
 } from "@/lib/supplier-profile";
-import { useActiveMatchedRequests } from "@/lib/supplier-requests";
+import {
+  MATCH_SCORE_THRESHOLDS,
+  type MatchScoreThreshold,
+  useActiveMatchedRequests,
+} from "@/lib/supplier-requests";
 
 export const Route = createFileRoute("/supplier/")({
   component: SupplierDashboardPage,
@@ -28,6 +33,7 @@ export const Route = createFileRoute("/supplier/")({
 });
 
 function SupplierDashboardPage() {
+  const [minimumMatchScore, setMinimumMatchScore] = useState<MatchScoreThreshold>(50);
   const profileQuery = useMySupplierProfile();
   const catalogCategoriesQuery = useCategoriesForSupplier();
   const catalogProfessionsQuery = useProfessionsForSupplier();
@@ -38,7 +44,7 @@ function SupplierDashboardPage() {
   const servicesQuery = useMySupplierServices();
   const areasQuery = useMySupplierServiceAreas();
   const onboardingQuery = useSupplierOnboardingState();
-  const matchesQuery = useActiveMatchedRequests();
+  const matchesQuery = useActiveMatchedRequests(minimumMatchScore);
 
   const loading =
     profileQuery.isLoading ||
@@ -191,6 +197,28 @@ function SupplierDashboardPage() {
                   </Link>
                 }
               >
+                <div className="mb-4 flex items-center justify-end gap-2">
+                  <label
+                    htmlFor="minimum-match-score"
+                    className="text-[12px] font-semibold text-muted-foreground"
+                  >
+                    סינון לפי התאמה
+                  </label>
+                  <select
+                    id="minimum-match-score"
+                    value={minimumMatchScore}
+                    onChange={(event) =>
+                      setMinimumMatchScore(Number(event.target.value) as MatchScoreThreshold)
+                    }
+                    className="h-9 rounded-lg border border-border bg-surface px-3 text-[12px] font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                  >
+                    {MATCH_SCORE_THRESHOLDS.map((threshold) => (
+                      <option key={threshold} value={threshold}>
+                        {threshold === 50 ? "כל ההתאמות" : `${threshold}%+`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 {matches.length === 0 ? (
                   <StateCard
                     icon={<Inbox className="h-5 w-5" strokeWidth={2.25} />}

@@ -4,17 +4,26 @@ import { ArrowLeft, CalendarDays, MapPin } from "lucide-react";
 import { formatDate } from "@/lib/i18n";
 import { formatBudget } from "@/lib/requests";
 import type { SupplierMatchedRequest } from "@/lib/supplier-requests";
+import { cn } from "@/lib/utils";
 
 export function SupplierMatchedRequestCard({ request }: { request: SupplierMatchedRequest }) {
+  const strongFit = request.match_strength === "strong";
+
   return (
     <article className="request-spine-navy rounded-xl border border-border bg-surface p-5 ps-6 shadow-e1 transition-all hover:border-border-strong hover:shadow-e2 sm:p-6 sm:ps-7">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-primary">
           בקשה מותאמת · {request.category?.name_he ?? "תחום לא זמין"}
         </span>
-        <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-success">
-          <span className="h-1.5 w-1.5 rounded-full bg-success" aria-hidden />
-          התאמה פעילה
+        <span
+          className={cn(
+            "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold",
+            strongFit
+              ? "border-success/20 bg-success-soft text-success"
+              : "border-warning/20 bg-warning-soft text-warning",
+          )}
+        >
+          {request.match_score}% · {request.match_level}
         </span>
       </div>
 
@@ -31,6 +40,31 @@ export function SupplierMatchedRequestCard({ request }: { request: SupplierMatch
           {formatDate(request.published_at ?? request.created_at)}
         </Meta>
       </div>
+
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <span className={cn("text-[11px] font-bold", strongFit ? "text-success" : "text-warning")}>
+          {strongFit ? "התאמה חזקה" : "התאמה חלשה"}
+        </span>
+        {request.match_badges.map((badge) => (
+          <span
+            key={badge}
+            className="inline-flex items-center rounded-full border border-border bg-surface-muted/50 px-2.5 py-1 text-[11px] font-semibold text-foreground"
+          >
+            {badge}
+          </span>
+        ))}
+      </div>
+
+      <details className="mt-4 rounded-lg border border-border bg-surface-muted/30 px-3 py-2">
+        <summary className="cursor-pointer text-[12px] font-semibold text-foreground">
+          למה אני רואה את הבקשה?
+        </summary>
+        <ul className="mt-2 space-y-1 text-[12px] leading-relaxed text-muted-foreground">
+          {request.match_explanations.map((explanation) => (
+            <li key={explanation}>• {explanation}</li>
+          ))}
+        </ul>
+      </details>
 
       <div className="mt-5 border-t border-border pt-4">
         <Link
