@@ -3,13 +3,14 @@ import { BriefcaseBusiness, CheckCircle2, Inbox } from "lucide-react";
 import { useState } from "react";
 
 import { PageContainer } from "@/components/app/PageContainer";
-import { ProfileCompletionPanel } from "@/components/app/ProfileCompletionPanel";
+import { DashboardProfileCompletionPanel } from "@/components/app/ProfileCompletionPanel";
 import { Section } from "@/components/app/Section";
 import { ErrorState, LoadingState, StateCard } from "@/components/app/StateCard";
 import { SupplierEnhancementNotice } from "@/components/app/SupplierEnhancementNotice";
 import { SupplierMatchedRequestCard } from "@/components/app/SupplierMatchedRequestCard";
 import {
   computeCompletion,
+  isSupplierProfileComplete,
   useCategoriesForSupplier,
   useMySupplierCategories,
   useMySupplierProfessionSelections,
@@ -139,6 +140,7 @@ function SupplierDashboardPage() {
     },
   );
   const matches = matchesQuery.data ?? [];
+  const isComplete = isSupplierProfileComplete(completion);
 
   return (
     <PageContainer>
@@ -183,18 +185,20 @@ function SupplierDashboardPage() {
                 />
               </div>
 
-              <ProfileCompletionPanel status={completion} />
+              <DashboardProfileCompletionPanel status={completion} />
 
               <Section
                 eyebrow="התאמות פעילות"
                 title="בקשות מותאמות"
                 action={
-                  <Link
-                    to="/supplier/profile"
-                    className="inline-flex h-10 items-center justify-center rounded-lg border border-border bg-surface px-4 text-[13px] font-semibold text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-                  >
-                    עריכת פרופיל
-                  </Link>
+                  !isComplete ? (
+                    <Link
+                      to="/supplier/profile"
+                      className="inline-flex h-10 items-center justify-center rounded-lg border border-border bg-surface px-4 text-[13px] font-semibold text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                    >
+                      עריכת פרופיל
+                    </Link>
+                  ) : undefined
                 }
               >
                 <div className="mb-4 flex items-center justify-end gap-2">

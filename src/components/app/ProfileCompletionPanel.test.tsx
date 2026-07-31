@@ -26,7 +26,7 @@ vi.mock("@tanstack/react-router", () => ({
   ),
 }));
 
-import { ProfileCompletionPanel } from "@/components/app/ProfileCompletionPanel";
+import { DashboardProfileCompletionPanel } from "@/components/app/ProfileCompletionPanel";
 
 const baseStatus: CompletionStatus = {
   hasProfile: true,
@@ -56,7 +56,7 @@ describe("ProfileCompletionPanel navigation", () => {
   it("shows the completion action for an incomplete supplier and navigates to the profile route", () => {
     render(
       <div dir="rtl">
-        <ProfileCompletionPanel status={baseStatus} />
+        <DashboardProfileCompletionPanel status={baseStatus} />
       </div>,
     );
 
@@ -70,28 +70,26 @@ describe("ProfileCompletionPanel navigation", () => {
   });
 
   it("shows the completion action when onboarding is not submitted even at 100 percent", () => {
-    render(<ProfileCompletionPanel status={{ ...baseStatus, percent: 100 }} />);
+    render(<DashboardProfileCompletionPanel status={{ ...baseStatus, percent: 100 }} />);
 
     expect(screen.getByRole("link", { name: "חזרה להשלמת הפרופיל" })).toBeTruthy();
   });
 
-  it("shows the profile-change action for a fully completed and submitted supplier", () => {
-    render(
-      <ProfileCompletionPanel
+  it("does not render the completion card for a fully completed supplier", () => {
+    const { container } = render(
+      <DashboardProfileCompletionPanel
         status={{ ...baseStatus, isSubmitted: true, isLegacy: false, percent: 100 }}
       />,
     );
 
-    const action = screen.getByRole("link", { name: "שינוי פרופיל" });
-    expect(action.getAttribute("href")).toBe("/supplier/profile");
-
-    fireEvent.click(action);
-    expect(navigationMock).toHaveBeenCalledWith("/supplier/profile");
+    expect(container.innerHTML).toBe("");
+    expect(screen.queryByText("100%")).toBeNull();
+    expect(screen.queryByRole("link", { name: "שינוי פרופיל" })).toBeNull();
   });
 
   it("keeps the completion action for a submitted legacy supplier", () => {
     render(
-      <ProfileCompletionPanel
+      <DashboardProfileCompletionPanel
         status={{ ...baseStatus, isSubmitted: true, isLegacy: true, percent: 100 }}
       />,
     );
@@ -102,7 +100,7 @@ describe("ProfileCompletionPanel navigation", () => {
   it("keeps the completion action rendered at mobile width", () => {
     render(
       <div dir="rtl" style={{ width: 320 }}>
-        <ProfileCompletionPanel status={baseStatus} />
+        <DashboardProfileCompletionPanel status={baseStatus} />
       </div>,
     );
 

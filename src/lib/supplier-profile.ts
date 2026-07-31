@@ -541,6 +541,10 @@ export type CompletionStatus = {
   items: CompletionItem[];
 };
 
+export function isSupplierProfileComplete(status: CompletionStatus) {
+  return status.percent === 100 && status.isSubmitted && !status.isLegacy;
+}
+
 export type CompletionItem = {
   id:
     | "business-name"
