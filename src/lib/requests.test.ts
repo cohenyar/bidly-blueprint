@@ -25,6 +25,7 @@ import {
   buildRequestDraftUpdatePayload,
   CURRENT_REQUEST_SCHEMA_SUPPORTS_DELIVERY,
   getRequestPublishErrorMessage,
+  getRequestPublishValidationTarget,
   isDeliveryModeRequiredError,
   isRequestPublishDisabled,
   normalizeRequestProjection,
@@ -450,6 +451,29 @@ describe("request publication sequencing", () => {
     ).resolves.toBeNull();
 
     expect(errors.delivery_mode).toBe("יש לבחור האם השירות יינתן במקום או מרחוק");
+    expect(save).not.toHaveBeenCalled();
+    expect(publish).not.toHaveBeenCalled();
+  });
+
+  it("blocks an on-site request without an area and targets the area control", async () => {
+    const input = { ...validInput, service_area_id: "" };
+    const save = vi.fn();
+    const publish = vi.fn();
+    const errors = validateRequestPublishFields(input);
+
+    expect(errors.service_area_id).toBe("יש לבחור אזור שירות לפני פרסום הבקשה");
+    expect(getRequestPublishValidationTarget(errors)).toBe("service_area_id");
+
+    await expect(
+      saveAndPublishRequestDraft({
+        requestId: "draft-1",
+        input,
+        validationErrors: errors,
+        save,
+        publish,
+      }),
+    ).resolves.toBeNull();
+
     expect(save).not.toHaveBeenCalled();
     expect(publish).not.toHaveBeenCalled();
   });

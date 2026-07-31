@@ -10,8 +10,10 @@ import { Section } from "@/components/app/Section";
 import { ErrorState, LoadingState, StateCard } from "@/components/app/StateCard";
 import {
   getRequestPublishErrorMessage,
+  getRequestPublishValidationTarget,
   isRequestPublishDisabled,
   isDeliveryModeRequiredError,
+  isServiceAreaRequiredError,
   useAcquireRequestDraft,
   useCategories,
   useDeleteRequestDraft,
@@ -95,6 +97,7 @@ function CreateRequestPage() {
   const [publishError, setPublishError] = useState<string | null>(null);
   const autosaveTimerRef = useRef<number | null>(null);
   const deliveryModeSelectRef = useRef<HTMLSelectElement>(null);
+  const serviceAreaSelectRef = useRef<HTMLSelectElement>(null);
 
   useEffect(() => {
     if (
@@ -244,6 +247,28 @@ function CreateRequestPage() {
     });
   }
 
+  function focusServiceAreaSelection() {
+    window.requestAnimationFrame(() => {
+      serviceAreaSelectRef.current?.focus();
+      serviceAreaSelectRef.current?.scrollIntoView?.({ block: "center" });
+    });
+  }
+
+  function focusPublishValidationTarget(nextErrors: Errors) {
+    const target = getRequestPublishValidationTarget(nextErrors);
+    if (target === "delivery_mode") focusDeliveryModeSelection();
+    if (target === "service_area_id") focusServiceAreaSelection();
+  }
+
+  useEffect(() => {
+    if (!initialized || deliveryMode !== "on_site" || serviceAreaId) return;
+    const frame = window.requestAnimationFrame(() => {
+      serviceAreaSelectRef.current?.focus();
+      serviceAreaSelectRef.current?.scrollIntoView?.({ block: "center" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [deliveryMode, initialized, serviceAreaId]);
+
   async function publish(event: React.FormEvent) {
     event.preventDefault();
     if (!draftId) return;
@@ -251,9 +276,7 @@ function CreateRequestPage() {
     setErrors(nextErrors);
     const firstValidationError = Object.values(nextErrors).find(Boolean);
     setPublishError(firstValidationError ?? null);
-    if (nextErrors.delivery_mode) {
-      focusDeliveryModeSelection();
-    }
+    focusPublishValidationTarget(nextErrors);
     if (
       Object.keys(nextErrors).length ||
       questionnairePending ||
@@ -293,6 +316,13 @@ function CreateRequestPage() {
         }));
         publishRequest.reset();
         focusDeliveryModeSelection();
+      } else if (isServiceAreaRequiredError(error)) {
+        setErrors((current) => ({
+          ...current,
+          service_area_id: "יש לבחור אזור שירות לפני פרסום הבקשה",
+        }));
+        publishRequest.reset();
+        focusServiceAreaSelection();
       }
     } finally {
       setIsFinalizing(false);
@@ -436,6 +466,11 @@ function CreateRequestPage() {
       questionnairePending,
       taxonomySaving,
     }) || isFinalizing;
+  const reviewErrors = validate();
+  const validationSummary = Object.entries(reviewErrors).filter(
+    (entry): entry is [keyof Errors, string] => Boolean(entry[1]),
+  );
+  const publishDisabled = publishing || validationSummary.length > 0;
 
   return (
     <PageContainer>
@@ -608,9 +643,15 @@ function CreateRequestPage() {
                 {deliveryMode === "on_site" ? (
                   <Field label="אזור שירות" error={errors.service_area_id} required>
                     <select
+                      ref={serviceAreaSelectRef}
                       className={inputClass}
                       value={serviceAreaId}
-                      onChange={(event) => setServiceAreaId(event.target.value)}
+                      aria-invalid={Boolean(errors.service_area_id)}
+                      onChange={(event) => {
+                        setServiceAreaId(event.target.value);
+                        setErrors((current) => ({ ...current, service_area_id: undefined }));
+                        setPublishError(null);
+                      }}
                     >
                       <option value="">בחירת אזור מנוהל</option>
                       {(serviceAreasQuery.data ?? []).map((area) => (
@@ -704,6 +745,31 @@ function CreateRequestPage() {
                 <AttachmentUploader requestId={draftId} canEdit />
               </fieldset>
 
+              <div className="rounded-lg border border-border bg-surface-muted/40 px-4 py-3 text-[13px]">
+                <p className="font-semibold text-foreground">בדיקה לפני פרסום</p>
+                {validationSummary.length > 0 ? (
+                  <ul className="mt-2 grid gap-1 text-danger">
+                    {validationSummary.map(([key, message]) => (
+                      <li key={key}>
+                        {key === "delivery_mode" || key === "service_area_id" ? (
+                          <button
+                            type="button"
+                            className="text-start underline underline-offset-2"
+                            onClick={() => focusPublishValidationTarget({ [key]: message })}
+                          >
+                            {message}
+                          </button>
+                        ) : (
+                          message
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mt-1 text-success">כל שדות החובה מלאים וניתן לפרסם.</p>
+                )}
+              </div>
+
               {publishError ? (
                 <div
                   role="alert"
@@ -724,7 +790,7 @@ function CreateRequestPage() {
                 </Link>
                 <button
                   type="submit"
-                  disabled={publishing}
+                  disabled={publishDisabled}
                   className="inline-flex h-11 items-center justify-center rounded-lg bg-primary px-5 text-[14px] font-semibold text-primary-foreground shadow-e1 disabled:opacity-60"
                 >
                   {isFinalizing || publishRequest.isPending ? "מפרסם…" : "פרסום הבקשה"}

@@ -423,7 +423,7 @@ export function validateRequestPublishFields(
   if (!input.delivery_mode) {
     errors.delivery_mode = "יש לבחור האם השירות יינתן במקום או מרחוק";
   } else if (input.delivery_mode === "on_site" && !input.service_area_id) {
-    errors.service_area_id = "יש לבחור אזור שירות מנוהל.";
+    errors.service_area_id = "יש לבחור אזור שירות לפני פרסום הבקשה";
   }
 
   if (input.budget_type === "fixed") {
@@ -448,6 +448,14 @@ export function validateRequestPublishFields(
   }
 
   return errors;
+}
+
+export function getRequestPublishValidationTarget(
+  errors: RequestPublishValidationErrors,
+): "delivery_mode" | "service_area_id" | null {
+  if (errors.delivery_mode) return "delivery_mode";
+  if (errors.service_area_id) return "service_area_id";
+  return null;
 }
 
 export async function saveAndPublishRequestDraft({
@@ -478,6 +486,16 @@ export function isDeliveryModeRequiredError(error: unknown): boolean {
   );
 }
 
+export function isServiceAreaRequiredError(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) return false;
+  const candidate = error as { code?: unknown; message?: unknown };
+  return (
+    candidate.code === "22000" &&
+    typeof candidate.message === "string" &&
+    candidate.message.includes("On-site Request requires an active Service Area")
+  );
+}
+
 export function getRequestPublishErrorMessage(error: unknown): string {
   const message =
     typeof error === "object" &&
@@ -489,7 +507,7 @@ export function getRequestPublishErrorMessage(error: unknown): string {
 
   const knownMessages: Record<string, string> = {
     "Request delivery mode is required": "יש לבחור האם השירות יינתן במקום או מרחוק",
-    "On-site Request requires an active Service Area": "יש לבחור אזור שירות פעיל.",
+    "On-site Request requires an active Service Area": "יש לבחור אזור שירות לפני פרסום הבקשה",
     "Remote Request must not have a Service Area": "בקשה מרחוק אינה יכולה לכלול אזור שירות.",
     "Selected Service does not support remote delivery": "השירות שנבחר אינו תומך בעבודה מרחוק.",
     "Required questionnaire answers are missing": "יש להשלים את כל שאלות החובה.",
