@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { AttachmentUploader } from "@/components/app/AttachmentUploader";
 import { DynamicRequestQuestionnaire } from "@/components/app/DynamicRequestQuestionnaire";
 import { PageContainer } from "@/components/app/PageContainer";
+import { RequestServiceAreaSelect } from "@/components/app/RequestServiceAreaSelect";
 import { Section } from "@/components/app/Section";
 import { ErrorState, LoadingState, StateCard } from "@/components/app/StateCard";
 import {
@@ -424,14 +425,9 @@ function CreateRequestPage() {
   const initialLoading =
     acquireDraft.isPending ||
     (draftId !== null && draftQuery.isPending) ||
-    categoriesQuery.isPending ||
-    serviceAreasQuery.isPending;
+    categoriesQuery.isPending;
   const initialError =
-    acquireError ??
-    acquireDraft.error ??
-    draftQuery.error ??
-    categoriesQuery.error ??
-    serviceAreasQuery.error;
+    acquireError ?? acquireDraft.error ?? draftQuery.error ?? categoriesQuery.error;
 
   if (initialError) {
     return (
@@ -642,24 +638,21 @@ function CreateRequestPage() {
 
                 {deliveryMode === "on_site" ? (
                   <Field label="אזור שירות" error={errors.service_area_id} required>
-                    <select
+                    <RequestServiceAreaSelect
                       ref={serviceAreaSelectRef}
+                      areas={serviceAreasQuery.data ?? []}
+                      isPending={serviceAreasQuery.isPending}
+                      isError={serviceAreasQuery.isError}
                       className={inputClass}
                       value={serviceAreaId}
-                      aria-invalid={Boolean(errors.service_area_id)}
-                      onChange={(event) => {
-                        setServiceAreaId(event.target.value);
+                      invalid={Boolean(errors.service_area_id)}
+                      onChange={(value) => {
+                        setServiceAreaId(value);
                         setErrors((current) => ({ ...current, service_area_id: undefined }));
                         setPublishError(null);
                       }}
-                    >
-                      <option value="">בחירת אזור מנוהל</option>
-                      {(serviceAreasQuery.data ?? []).map((area) => (
-                        <option key={area.id} value={area.id}>
-                          {area.name_he}
-                        </option>
-                      ))}
-                    </select>
+                      onRetry={() => void serviceAreasQuery.refetch()}
+                    />
                   </Field>
                 ) : (
                   <div className="rounded-lg border border-border bg-surface-muted/40 p-4 text-[12px] text-muted-foreground">
