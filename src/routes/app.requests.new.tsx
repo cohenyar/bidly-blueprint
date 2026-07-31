@@ -1,18 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowRight, CheckCircle2 } from "lucide-react";
+import { ArrowRight, CheckCircle2, FilePenLine, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 
 import { AttachmentUploader } from "@/components/app/AttachmentUploader";
 import { DynamicRequestQuestionnaire } from "@/components/app/DynamicRequestQuestionnaire";
 import { PageContainer } from "@/components/app/PageContainer";
 import { Section } from "@/components/app/Section";
-import { ErrorState, LoadingState } from "@/components/app/StateCard";
+import { ErrorState, LoadingState, StateCard } from "@/components/app/StateCard";
 import {
+  getRequestPublishErrorMessage,
   isRequestPublishDisabled,
   isDeliveryModeRequiredError,
-  saveAndPublishRequestDraft,
   useAcquireRequestDraft,
   useCategories,
+  useDeleteRequestDraft,
+  useExistingRequestDraft,
   usePublishRequest,
   useRequest,
   useRequestServiceAreas,
@@ -52,12 +55,17 @@ const inputClass =
 
 function CreateRequestPage() {
   const navigate = useNavigate();
+  const existingDraftQuery = useExistingRequestDraft();
+  const deleteDraft = useDeleteRequestDraft();
+  const [draftSessionAuthorized, setDraftSessionAuthorized] = useState(false);
   const acquireDraft = useAcquireRequestDraft();
   const {
     draftId,
     error: acquireError,
     retry: retryDraftAcquisition,
-  } = useRequestDraftAcquisition(acquireDraft.mutateAsync);
+  } = useRequestDraftAcquisition(acquireDraft.mutateAsync, {
+    enabled: draftSessionAuthorized,
+  });
   const draftQuery = useRequest(draftId ?? "");
   const saveDraft = useSaveRequestDraft(draftId);
   const autosaveDraft = saveDraft.mutate;
@@ -83,8 +91,20 @@ function CreateRequestPage() {
   const [questionnaireValid, setQuestionnaireValid] = useState(true);
   const [questionnairePending, setQuestionnairePending] = useState(false);
   const [taxonomySaving, setTaxonomySaving] = useState(false);
+  const [isFinalizing, setIsFinalizing] = useState(false);
+  const [publishError, setPublishError] = useState<string | null>(null);
   const autosaveTimerRef = useRef<number | null>(null);
   const deliveryModeSelectRef = useRef<HTMLSelectElement>(null);
+
+  useEffect(() => {
+    if (
+      existingDraftQuery.isSuccess &&
+      !existingDraftQuery.isFetching &&
+      !existingDraftQuery.data
+    ) {
+      setDraftSessionAuthorized(true);
+    }
+  }, [existingDraftQuery.data, existingDraftQuery.isFetching, existingDraftQuery.isSuccess]);
 
   const subcategoriesQuery = useSubcategories(categoryId || null);
   const servicesQuery = useServicesForProfession(subcategoryId || null);
@@ -229,6 +249,8 @@ function CreateRequestPage() {
     if (!draftId) return;
     const nextErrors = validate();
     setErrors(nextErrors);
+    const firstValidationError = Object.values(nextErrors).find(Boolean);
+    setPublishError(firstValidationError ?? null);
     if (nextErrors.delivery_mode) {
       focusDeliveryModeSelection();
     }
@@ -241,34 +263,132 @@ function CreateRequestPage() {
       return;
     }
 
+    setPublishError(null);
     if (autosaveTimerRef.current !== null) {
       window.clearTimeout(autosaveTimerRef.current);
       autosaveTimerRef.current = null;
     }
 
+    setIsFinalizing(true);
     try {
-      const publishedId = await saveAndPublishRequestDraft({
-        requestId: draftId,
-        input: draftInput,
-        validationErrors: nextErrors,
-        save: saveDraft.mutateAsync,
-        publish: publishRequest.mutateAsync,
-      });
-      if (!publishedId) return;
-      void navigate({ to: "/app/requests/$id", params: { id: publishedId }, replace: true });
+      setAutosaveStatus("שומר את הפרטים האחרונים…");
+      await saveDraft.mutateAsync(draftInput);
+      setAutosaveStatus("מפרסם את הבקשה…");
+      const publishedId = await publishRequest.mutateAsync(draftId);
+      if (!publishedId) throw new Error("Publication completed without a Request ID");
+      toast.success("הבקשה פורסמה בהצלחה");
+      try {
+        await navigate({ to: "/app/requests/$id", params: { id: publishedId }, replace: true });
+      } catch {
+        window.location.assign(`/app/requests/${encodeURIComponent(publishedId)}`);
+      }
     } catch (error) {
+      const message = getRequestPublishErrorMessage(error);
+      setPublishError(message);
+      setAutosaveStatus(message);
       if (isDeliveryModeRequiredError(error)) {
         setErrors((current) => ({
           ...current,
           delivery_mode: "יש לבחור האם השירות יינתן במקום או מרחוק",
         }));
-        setAutosaveStatus("יש לבחור האם השירות יינתן במקום או מרחוק");
         publishRequest.reset();
         focusDeliveryModeSelection();
-        return;
       }
-      setAutosaveStatus("הפרסום נכשל. הטיוטה וכל הקבצים נשמרו וניתן לנסות שוב.");
+    } finally {
+      setIsFinalizing(false);
     }
+  }
+
+  async function deleteExistingDraftAndStartNew() {
+    const existingDraft = existingDraftQuery.data;
+    if (!existingDraft) return;
+    if (!window.confirm("למחוק את הטיוטה הקיימת ולהתחיל בקשה חדשה?")) return;
+
+    try {
+      await deleteDraft.mutateAsync(existingDraft.id);
+      setInitialized(false);
+      setDraftSessionAuthorized(true);
+    } catch {
+      // The mutation error remains visible in the draft-choice surface.
+    }
+  }
+
+  if (existingDraftQuery.isPending || (existingDraftQuery.isFetching && !draftSessionAuthorized)) {
+    return (
+      <PageContainer>
+        <div className="py-14">
+          <LoadingState label="בודק אם קיימת טיוטה…" />
+        </div>
+      </PageContainer>
+    );
+  }
+
+  if (existingDraftQuery.isError) {
+    return (
+      <PageContainer>
+        <div className="py-14">
+          <ErrorState
+            error={existingDraftQuery.error}
+            onRetry={() => void existingDraftQuery.refetch()}
+          />
+        </div>
+      </PageContainer>
+    );
+  }
+
+  if (existingDraftQuery.data && !draftSessionAuthorized) {
+    const deleteError =
+      deleteDraft.error instanceof Error
+        ? deleteDraft.error.message
+        : deleteDraft.isError
+          ? "לא הצלחנו למחוק את הטיוטה. היא נשמרה וניתן לנסות שוב."
+          : null;
+
+    return (
+      <PageContainer>
+        <div className="py-14">
+          <StateCard
+            icon={<FilePenLine className="h-5 w-5" />}
+            eyebrow="טיוטה קיימת"
+            title="יש לכם בקשה שעדיין לא פורסמה"
+            body={
+              <div>
+                <p>
+                  {existingDraftQuery.data.title?.trim() ||
+                    "הפרטים שכבר הזנתם שמורים בטיוטה הפרטית."}
+                </p>
+                {deleteError ? (
+                  <p role="alert" className="mt-3 text-danger" dir="auto">
+                    {deleteError}
+                  </p>
+                ) : null}
+              </div>
+            }
+            action={
+              <>
+                <button
+                  type="button"
+                  onClick={() => setDraftSessionAuthorized(true)}
+                  disabled={deleteDraft.isPending}
+                  className="inline-flex h-11 items-center justify-center rounded-lg bg-primary px-5 text-[14px] font-semibold text-primary-foreground shadow-e1 disabled:opacity-60"
+                >
+                  המשך עריכת הטיוטה
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void deleteExistingDraftAndStartNew()}
+                  disabled={deleteDraft.isPending}
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-border px-5 text-[14px] font-semibold text-foreground disabled:opacity-60"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  {deleteDraft.isPending ? "מוחק טיוטה…" : "מחיקת הטיוטה ויצירת בקשה חדשה"}
+                </button>
+              </>
+            }
+          />
+        </div>
+      </PageContainer>
+    );
   }
 
   const initialLoading =
@@ -309,12 +429,13 @@ function CreateRequestPage() {
     );
   }
 
-  const publishing = isRequestPublishDisabled({
-    publishPending: publishRequest.isPending,
-    autosavePending: saveDraft.isPending,
-    questionnairePending,
-    taxonomySaving,
-  });
+  const publishing =
+    isRequestPublishDisabled({
+      publishPending: publishRequest.isPending,
+      autosavePending: saveDraft.isPending,
+      questionnairePending,
+      taxonomySaving,
+    }) || isFinalizing;
 
   return (
     <PageContainer>
@@ -583,8 +704,15 @@ function CreateRequestPage() {
                 <AttachmentUploader requestId={draftId} canEdit />
               </fieldset>
 
-              {publishRequest.isError && !isDeliveryModeRequiredError(publishRequest.error) ? (
-                <ErrorState error={publishRequest.error} onRetry={() => publishRequest.reset()} />
+              {publishError ? (
+                <div
+                  role="alert"
+                  className="rounded-lg border border-danger/30 bg-danger/5 px-4 py-3 text-[13px] text-danger"
+                  dir="auto"
+                >
+                  <p className="font-semibold">{publishError}</p>
+                  <p className="mt-1">הטיוטה נשמרה. תקנו את הפרטים ונסו לפרסם שוב.</p>
+                </div>
               ) : null}
 
               <div className="flex flex-col-reverse gap-3 border-t border-border pt-5 sm:flex-row sm:justify-between">
@@ -599,7 +727,7 @@ function CreateRequestPage() {
                   disabled={publishing}
                   className="inline-flex h-11 items-center justify-center rounded-lg bg-primary px-5 text-[14px] font-semibold text-primary-foreground shadow-e1 disabled:opacity-60"
                 >
-                  {publishRequest.isPending ? "מפרסם…" : "פרסום הבקשה"}
+                  {isFinalizing || publishRequest.isPending ? "מפרסם…" : "פרסום הבקשה"}
                 </button>
               </div>
             </form>

@@ -5,11 +5,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const supabaseMock = vi.hoisted(() => {
   const maybeSingle = vi.fn();
+  const limit = vi.fn(() => ({ maybeSingle }));
+  const order = vi.fn(() => ({ limit }));
+  const is = vi.fn(() => ({ order }));
   const eq = vi.fn(() => ({ maybeSingle }));
-  const select = vi.fn(() => ({ eq }));
+  const select = vi.fn(() => ({ eq, is }));
   const from = vi.fn(() => ({ select }));
 
-  return { eq, from, maybeSingle, select };
+  return { eq, from, is, limit, maybeSingle, order, select };
 });
 
 vi.mock("@/integrations/supabase/client", () => ({
@@ -21,11 +24,13 @@ vi.mock("@/integrations/supabase/client", () => ({
 import {
   buildRequestDraftUpdatePayload,
   CURRENT_REQUEST_SCHEMA_SUPPORTS_DELIVERY,
+  getRequestPublishErrorMessage,
   isDeliveryModeRequiredError,
   isRequestPublishDisabled,
   normalizeRequestProjection,
   REQUEST_PROJECTION,
   saveAndPublishRequestDraft,
+  useExistingRequestDraft,
   useRequest,
   validateRequestPublishFields,
 } from "@/lib/requests";
@@ -179,6 +184,45 @@ describe("request projection", () => {
       service: null,
       service_area: null,
     });
+  });
+});
+
+describe("request draft lifecycle", () => {
+  it("loads the customer's existing unpublished draft before acquisition", async () => {
+    supabaseMock.maybeSingle.mockResolvedValue({
+      data: {
+        id: "draft-existing",
+        title: "טיוטה קיימת",
+        updated_at: "2026-07-31T08:00:00.000Z",
+      },
+      error: null,
+    });
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const wrapper = ({ children }: PropsWithChildren) =>
+      createElement(QueryClientProvider, { client: queryClient }, children);
+    const { result } = renderHook(() => useExistingRequestDraft(), { wrapper });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data?.id).toBe("draft-existing");
+    expect(supabaseMock.from).toHaveBeenCalledWith("requests");
+  });
+
+  it("exposes known validation errors and preserves unknown backend messages", () => {
+    expect(
+      getRequestPublishErrorMessage({
+        code: "22000",
+        message: "Required questionnaire answers are missing",
+      }),
+    ).toBe("יש להשלים את כל שאלות החובה.");
+    expect(
+      getRequestPublishErrorMessage({
+        code: "22000",
+        message: "A specific backend validation failed",
+      }),
+    ).toBe("A specific backend validation failed");
   });
 });
 

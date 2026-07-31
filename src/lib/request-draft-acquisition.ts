@@ -2,7 +2,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 type AcquireRequestDraft = (input: void) => Promise<string>;
 
-export function useRequestDraftAcquisition(acquireRequestDraft: AcquireRequestDraft) {
+export function useRequestDraftAcquisition(
+  acquireRequestDraft: AcquireRequestDraft,
+  { enabled = true }: { enabled?: boolean } = {},
+) {
   const acquireStarted = useRef(false);
   const acquirePromise = useRef<Promise<string> | null>(null);
   const [draftId, setDraftId] = useState<string | null>(null);
@@ -33,6 +36,8 @@ export function useRequestDraftAcquisition(acquireRequestDraft: AcquireRequestDr
   }, [acquireRequestDraft]);
 
   useEffect(() => {
+    if (!enabled) return;
+
     let active = true;
 
     void acquire()
@@ -48,7 +53,7 @@ export function useRequestDraftAcquisition(acquireRequestDraft: AcquireRequestDr
     return () => {
       active = false;
     };
-  }, [acquire]);
+  }, [acquire, enabled]);
 
   const retry = useCallback(() => {
     acquireStarted.current = false;

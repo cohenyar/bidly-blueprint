@@ -19,11 +19,13 @@ type DraftState = ReturnType<typeof useRequestDraftAcquisition>;
 function DraftProbe({
   acquire,
   onState,
+  enabled,
 }: {
   acquire: (input: void) => Promise<string>;
   onState: (state: DraftState) => void;
+  enabled?: boolean;
 }) {
-  const state = useRequestDraftAcquisition(acquire);
+  const state = useRequestDraftAcquisition(acquire, { enabled });
 
   useEffect(() => {
     onState(state);
@@ -116,5 +118,22 @@ describe("request draft acquisition", () => {
     await waitFor(() => expect(screen.getByText("draft-after-empty")).toBeTruthy());
     expect(acquire).toHaveBeenCalledTimes(2);
     expect(latestState.error).toBeNull();
+  });
+
+  it("waits for an existing-draft choice before acquiring", async () => {
+    const acquire = vi.fn().mockResolvedValue("draft-1");
+    let latestState!: DraftState;
+    const { rerender } = render(
+      <DraftProbe acquire={acquire} enabled={false} onState={(state) => (latestState = state)} />,
+    );
+
+    await act(async () => Promise.resolve());
+    expect(acquire).not.toHaveBeenCalled();
+    expect(latestState.draftId).toBeNull();
+
+    rerender(<DraftProbe acquire={acquire} enabled onState={(state) => (latestState = state)} />);
+
+    await waitFor(() => expect(screen.getByText("draft-1")).toBeTruthy());
+    expect(acquire).toHaveBeenCalledTimes(1);
   });
 });

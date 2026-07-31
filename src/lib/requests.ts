@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
+import { BUCKET as REQUEST_ATTACHMENTS_BUCKET } from "@/lib/attachments";
 
 export type RequestRow = Database["public"]["Tables"]["requests"]["Row"];
 export type CategoryRow = Database["public"]["Tables"]["categories"]["Row"];
@@ -243,6 +244,23 @@ export function useRequest(id: string) {
   });
 }
 
+export function useExistingRequestDraft() {
+  return useQuery({
+    queryKey: ["request-draft"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("requests")
+        .select("id, title, updated_at")
+        .is("published_at", null)
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
 export function useAcquireRequestDraft() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -277,6 +295,43 @@ export function useAcquireRequestDraft() {
     },
     onSuccess: (requestId) => {
       void queryClient.invalidateQueries({ queryKey: ["request", requestId] });
+      void queryClient.invalidateQueries({ queryKey: ["request-draft"] });
+    },
+  });
+}
+
+export function useDeleteRequestDraft() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (requestId: string) => {
+      const { data: attachments, error: attachmentError } = await supabase
+        .from("request_attachments")
+        .select("storage_path")
+        .eq("request_id", requestId);
+      if (attachmentError) throw attachmentError;
+
+      const storagePaths = (attachments ?? []).map((attachment) => attachment.storage_path);
+      if (storagePaths.length > 0) {
+        const { error: storageError } = await supabase.storage
+          .from(REQUEST_ATTACHMENTS_BUCKET)
+          .remove(storagePaths);
+        if (storageError) throw storageError;
+      }
+
+      const { data, error } = await supabase
+        .from("requests")
+        .delete()
+        .eq("id", requestId)
+        .is("published_at", null)
+        .select("id")
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) throw new Error("Request draft was not found or could not be deleted");
+      return data.id;
+    },
+    onSuccess: (requestId) => {
+      queryClient.removeQueries({ queryKey: ["request", requestId] });
+      queryClient.removeQueries({ queryKey: ["attachments", requestId] });
       void queryClient.invalidateQueries({ queryKey: ["request-draft"] });
     },
   });
@@ -421,6 +476,30 @@ export function isDeliveryModeRequiredError(error: unknown): boolean {
     typeof candidate.message === "string" &&
     candidate.message.includes("Request delivery mode is required")
   );
+}
+
+export function getRequestPublishErrorMessage(error: unknown): string {
+  const message =
+    typeof error === "object" &&
+    error !== null &&
+    "message" in error &&
+    typeof error.message === "string"
+      ? error.message
+      : "";
+
+  const knownMessages: Record<string, string> = {
+    "Request delivery mode is required": "יש לבחור האם השירות יינתן במקום או מרחוק",
+    "On-site Request requires an active Service Area": "יש לבחור אזור שירות פעיל.",
+    "Remote Request must not have a Service Area": "בקשה מרחוק אינה יכולה לכלול אזור שירות.",
+    "Selected Service does not support remote delivery": "השירות שנבחר אינו תומך בעבודה מרחוק.",
+    "Required questionnaire answers are missing": "יש להשלים את כל שאלות החובה.",
+    "Published Request is missing required fields": "יש להשלים את כל שדות החובה לפני הפרסום.",
+    "Invalid title length": "כותרת הבקשה אינה באורך תקין.",
+    "Invalid description length": "תיאור הבקשה ארוך מ־4,000 תווים.",
+    "Invalid city": "יש להזין עיר תקינה.",
+  };
+
+  return knownMessages[message] || message || "פרסום הבקשה נכשל. הטיוטה נשמרה וניתן לנסות שוב.";
 }
 
 export function useSaveRequestDraft(requestId: string | null) {
