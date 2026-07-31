@@ -3,9 +3,10 @@ import { CheckCircle2, Clock, Send } from "lucide-react";
 
 import {
   offerSubmissionErrorMessage,
+  toSubmitOfferInput,
   useSubmitOffer,
   useWithdrawOffer,
-  validateOffer,
+  validateOfferForm,
   type OfferRow,
   type OfferStatus,
   type OfferValidationErrors,
@@ -14,11 +15,26 @@ import { formatCurrency, formatDateTime } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 const STATUS_LABEL: Record<OfferStatus, string> = {
-  submitted: "נשלחה וממתינה לבחירת הלקוח",
+  submitted: "ההצעה נשלחה",
   selected: "ההצעה נבחרה",
   rejected: "הלקוח בחר בהצעה אחרת",
   withdrawn: "ההצעה אינה פעילה",
 };
+
+export function SupplierOfferPrompt({ onOpen }: { onOpen: () => void }) {
+  return (
+    <div className="rounded-2xl border border-border bg-surface p-6 shadow-e1 sm:p-8">
+      <button
+        type="button"
+        onClick={onOpen}
+        className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-primary px-5 text-[14px] font-semibold text-primary-foreground shadow-e1 hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-2 sm:w-auto"
+      >
+        <Send className="h-4 w-4" />
+        שליחת הצעה
+      </button>
+    </div>
+  );
+}
 
 export function SupplierOwnOffer({
   offer,
@@ -123,17 +139,17 @@ export function SupplierOfferForm({
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSubmitError(null);
-    const input = {
-      price: Number(price),
-      estimated_days: Number(estimatedDays),
+    const values = {
+      price,
+      estimated_days: estimatedDays,
       message,
     };
-    const nextErrors = validateOffer(input);
+    const nextErrors = validateOfferForm(values);
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
 
     try {
-      await submitOffer.mutateAsync(input);
+      await submitOffer.mutateAsync(toSubmitOfferInput(values));
       onSubmitted();
     } catch (error) {
       setSubmitError(offerSubmissionErrorMessage(error));
@@ -158,7 +174,7 @@ export function SupplierOfferForm({
       <div className="mt-6 grid gap-5 sm:grid-cols-2">
         <div>
           <label htmlFor="offer-price" className="text-[12px] font-semibold text-foreground">
-            מחיר (₪)
+            הערכת מחיר (₪)
           </label>
           <input
             id="offer-price"
@@ -211,7 +227,7 @@ export function SupplierOfferForm({
         <div className="sm:col-span-2">
           <div className="flex items-center justify-between gap-3">
             <label htmlFor="offer-message" className="text-[12px] font-semibold text-foreground">
-              הודעה ללקוח
+              פירוט ההצעה
             </label>
             <span className="text-[11px] tabular-nums text-muted-foreground">
               {message.length}/2,000
@@ -257,7 +273,7 @@ export function SupplierOfferForm({
         className="mt-6 inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-primary px-5 text-[14px] font-semibold text-primary-foreground shadow-e1 hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
       >
         <Send className="h-4 w-4" />
-        {submitOffer.isPending ? "שולח את ההצעה…" : "שליחת הצעה"}
+        {submitOffer.isPending ? "שולח את ההצעה…" : "שליחת ההצעה"}
       </button>
     </form>
   );

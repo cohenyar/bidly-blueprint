@@ -17,10 +17,77 @@ export type SubmitOfferInput = {
 
 export type OfferValidationErrors = Partial<Record<keyof SubmitOfferInput, string>>;
 
+export type OfferFormValues = {
+  price: string;
+  estimated_days: string;
+  message: string;
+};
+
+export type SupplierOfferVisibility = {
+  isSupplier: boolean;
+  hasActiveMatch: boolean;
+  canViewRequest: boolean;
+  requestStatus: Database["public"]["Enums"]["request_status"];
+  hasExistingOffer: boolean;
+};
+
+export function canShowSupplierOfferAction({
+  isSupplier,
+  hasActiveMatch,
+  canViewRequest,
+  requestStatus,
+  hasExistingOffer,
+}: SupplierOfferVisibility) {
+  return (
+    isSupplier && hasActiveMatch && canViewRequest && requestStatus === "open" && !hasExistingOffer
+  );
+}
+
+export function validateOfferForm(values: OfferFormValues): OfferValidationErrors {
+  const errors: OfferValidationErrors = {};
+  const rawPrice = values.price.trim();
+
+  if (!rawPrice) {
+    errors.price = "יש להזין הערכת מחיר";
+  } else {
+    const price = Number(rawPrice);
+    if (!Number.isFinite(price) || !Number.isInteger(price) || price > 2_147_483_647) {
+      errors.price = "יש להזין מחיר מספרי תקין";
+    } else if (price <= 0) {
+      errors.price = "יש להזין מחיר גדול מ־0";
+    }
+  }
+
+  const estimatedDays = Number(values.estimated_days);
+  if (
+    !values.estimated_days.trim() ||
+    !Number.isInteger(estimatedDays) ||
+    estimatedDays < 1 ||
+    estimatedDays > 365
+  ) {
+    errors.estimated_days = "מספר הימים חייב להיות בין 1 ל־365.";
+  }
+
+  const message = values.message.trim();
+  if (message.length < 20 || message.length > 2000) {
+    errors.message = "פירוט ההצעה חייב להכיל בין 20 ל־2,000 תווים.";
+  }
+
+  return errors;
+}
+
+export function toSubmitOfferInput(values: OfferFormValues): SubmitOfferInput {
+  return {
+    price: Number(values.price),
+    estimated_days: Number(values.estimated_days),
+    message: values.message,
+  };
+}
+
 export function validateOffer(input: SubmitOfferInput): OfferValidationErrors {
   const errors: OfferValidationErrors = {};
   if (!Number.isInteger(input.price) || input.price <= 0 || input.price > 2_147_483_647) {
-    errors.price = "יש להזין מחיר שלם וחיובי.";
+    errors.price = "יש להזין מחיר מספרי תקין";
   }
   if (
     !Number.isInteger(input.estimated_days) ||
@@ -31,7 +98,7 @@ export function validateOffer(input: SubmitOfferInput): OfferValidationErrors {
   }
   const message = input.message.trim();
   if (message.length < 20 || message.length > 2000) {
-    errors.message = "ההודעה חייבת להכיל בין 20 ל־2,000 תווים.";
+    errors.message = "פירוט ההצעה חייב להכיל בין 20 ל־2,000 תווים.";
   }
   return errors;
 }
@@ -39,6 +106,8 @@ export function validateOffer(input: SubmitOfferInput): OfferValidationErrors {
 type SupabaseLikeError = {
   code?: string;
   message?: string;
+  details?: string;
+  hint?: string;
 };
 
 export function offerSubmissionErrorMessage(error: unknown): string {
@@ -50,7 +119,9 @@ export function offerSubmissionErrorMessage(error: unknown): string {
     return "כבר שלחתם הצעה לבקשה הזו. ההצעה הקיימת תיטען כעת.";
   }
   if (code === "23514" || code === "22000") {
-    return "אחד מפרטי ההצעה אינו תקין. בדקו את המחיר, מספר הימים וההודעה.";
+    return (
+      candidate?.message || "אחד מפרטי ההצעה אינו תקין. בדקו את המחיר, מספר הימים ופירוט ההצעה."
+    );
   }
   if (
     code === "42501" ||
@@ -62,7 +133,7 @@ export function offerSubmissionErrorMessage(error: unknown): string {
   if (message.includes("not authenticated") || message.includes("jwt")) {
     return "החיבור שלכם פג. התחברו מחדש ונסו שוב.";
   }
-  return "שליחת ההצעה נכשלה. נסו שוב בעוד רגע.";
+  return candidate?.message || "שליחת ההצעה נכשלה. נסו שוב בעוד רגע.";
 }
 
 export function useOwnOffer(requestId: string, enabled = true) {

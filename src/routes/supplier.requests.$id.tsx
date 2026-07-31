@@ -5,9 +5,14 @@ import { ArrowRight, Ban, CheckCircle2, FileText, Inbox } from "lucide-react";
 import { PageContainer } from "@/components/app/PageContainer";
 import { Section } from "@/components/app/Section";
 import { ErrorState, LoadingState, StateCard } from "@/components/app/StateCard";
-import { SupplierOfferForm, SupplierOwnOffer } from "@/components/app/SupplierOfferPanel";
+import {
+  SupplierOfferForm,
+  SupplierOfferPrompt,
+  SupplierOwnOffer,
+} from "@/components/app/SupplierOfferPanel";
 import { SupplierRequestAttachments } from "@/components/app/SupplierRequestAttachments";
-import { useOwnOffer } from "@/lib/offers";
+import { useAuth } from "@/lib/auth-context";
+import { canShowSupplierOfferAction, useOwnOffer } from "@/lib/offers";
 import { formatDateTime } from "@/lib/i18n";
 import { formatBudget } from "@/lib/requests";
 import { useActiveMatchedRequest } from "@/lib/supplier-requests";
@@ -19,9 +24,11 @@ export const Route = createFileRoute("/supplier/requests/$id")({
 
 function SupplierRequestDetailsPage() {
   const { id } = Route.useParams();
+  const { role } = useAuth();
   const requestQuery = useActiveMatchedRequest(id);
   const ownOfferQuery = useOwnOffer(id);
   const [offerSubmitted, setOfferSubmitted] = useState(false);
+  const [offerFormOpen, setOfferFormOpen] = useState(false);
 
   if (requestQuery.isPending) {
     return (
@@ -125,6 +132,14 @@ function SupplierRequestDetailsPage() {
     );
   }
 
+  const canStartOffer = canShowSupplierOfferAction({
+    isSupplier: role === "supplier",
+    hasActiveMatch: request.match_status === "active",
+    canViewRequest: true,
+    requestStatus: request.status,
+    hasExistingOffer: Boolean(ownOfferQuery.data) || offerSubmitted,
+  });
+
   return (
     <PageContainer>
       <div className="py-10 sm:py-14">
@@ -211,13 +226,13 @@ function SupplierRequestDetailsPage() {
 
           <aside>
             <Section eyebrow="הצעה פרטית" title="ההצעה שלכם">
-              {offerSubmitted && ownOfferQuery.data ? (
+              {offerSubmitted ? (
                 <div
                   role="status"
                   className="mb-4 flex items-start gap-2 rounded-xl border border-success/30 bg-success-soft p-4 text-[13px] text-success"
                 >
                   <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
-                  ההצעה נשלחה בהצלחה ונשמרה במערכת.
+                  ההצעה נשלחה בהצלחה
                 </div>
               ) : null}
 
@@ -249,12 +264,19 @@ function SupplierRequestDetailsPage() {
                   title="לא ניתן לשלוח הצעה לבקשה הזו."
                   className="p-6 sm:p-7"
                 />
-              ) : (
+              ) : offerSubmitted ? (
+                <LoadingState label="טוען את ההצעה שנשלחה…" />
+              ) : offerFormOpen && canStartOffer ? (
                 <SupplierOfferForm
                   requestId={request.id}
-                  onSubmitted={() => setOfferSubmitted(true)}
+                  onSubmitted={() => {
+                    setOfferSubmitted(true);
+                    setOfferFormOpen(false);
+                  }}
                 />
-              )}
+              ) : canStartOffer ? (
+                <SupplierOfferPrompt onOpen={() => setOfferFormOpen(true)} />
+              ) : null}
             </Section>
           </aside>
         </div>

@@ -869,6 +869,36 @@ export type Database = {
         }[];
       };
       can_submit_offer: { Args: { _request_id: string }; Returns: boolean };
+      get_customer_request_offers: {
+        Args: { _request_id: string };
+        Returns: {
+          base_city: string | null;
+          business_description: string | null;
+          business_name: string;
+          created_at: string;
+          estimated_days: number;
+          id: string;
+          message: string;
+          price: number;
+          request_id: string;
+          status: Database["public"]["Enums"]["offer_status"];
+          years_experience: number | null;
+        }[];
+      };
+      get_supplier_offer: {
+        Args: { _request_id: string };
+        Returns: {
+          created_at: string;
+          estimated_days: number;
+          id: string;
+          message: string;
+          price: number;
+          request_id: string;
+          status: Database["public"]["Enums"]["offer_status"];
+          updated_at: string;
+          withdrawn_at: string | null;
+        }[];
+      };
       get_active_supplier_requests: {
         Args: { _request_id?: string };
         Returns: {
@@ -936,7 +966,18 @@ export type Database = {
       };
       is_supplier_profile_complete: { Args: never; Returns: boolean };
       publish_request: { Args: { _request_id: string }; Returns: string };
+      select_offer: { Args: { _offer_id: string }; Returns: string };
+      submit_offer: {
+        Args: {
+          _estimated_days: number;
+          _message: string;
+          _price: number;
+          _request_id: string;
+        };
+        Returns: string;
+      };
       submit_supplier_onboarding: { Args: never; Returns: boolean };
+      withdraw_offer: { Args: { _offer_id: string }; Returns: string };
     };
     Enums: {
       app_role: "customer" | "supplier" | "admin";
