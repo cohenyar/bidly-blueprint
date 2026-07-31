@@ -55,6 +55,7 @@ export const REQUEST_PROJECTION =
 export function normalizeRequestProjection<
   T extends {
     service: ProjectedService | null;
+    service_area?: unknown;
   },
 >(
   row: T,
@@ -64,8 +65,10 @@ export function normalizeRequestProjection<
   service: Pick<ServiceRow, "id" | "slug" | "name_he"> | null;
   service_area: null;
 } {
-  const { service, ...request } = row;
+  const { service, service_area: _serviceArea, ...request } = row;
   const subcategory = service?.subcategory ?? null;
+
+  void _serviceArea;
 
   return {
     ...request,
@@ -295,15 +298,25 @@ export type RequestDraftInput = {
 };
 
 export type RequestPublishValidationErrors = Partial<
-  Record<"title" | "description" | "city" | "category_id" | "service" | "budget", string>
+  Record<
+    | "title"
+    | "description"
+    | "city"
+    | "category_id"
+    | "service"
+    | "delivery_mode"
+    | "service_area_id"
+    | "budget",
+    string
+  >
 >;
 
-// Compatibility flag for the managed schema through 20260725100000.
-// Remove this flag and restore delivery validation after migrations 7–10.
-export const CURRENT_REQUEST_SCHEMA_SUPPORTS_DELIVERY = false;
+// The managed schema now enforces delivery compatibility during publication.
+export const CURRENT_REQUEST_SCHEMA_SUPPORTS_DELIVERY = true;
 
 export function isRequestPublishDisabled({
   publishPending,
+  autosavePending,
   questionnairePending,
   taxonomySaving,
 }: {
@@ -312,12 +325,9 @@ export function isRequestPublishDisabled({
   questionnairePending: boolean;
   taxonomySaving: boolean;
 }) {
-  return publishPending || questionnairePending || taxonomySaving;
+  return publishPending || autosavePending || questionnairePending || taxonomySaving;
 }
 
-// The managed backend currently stops at 20260725100000. Keep delivery choices
-// in form state, but do not persist columns added by 20260725111000 until the
-// remaining migrations are applied.
 export function buildRequestDraftUpdatePayload(input: RequestDraftInput) {
   return {
     title: input.title.trim() || null,
@@ -327,6 +337,8 @@ export function buildRequestDraftUpdatePayload(input: RequestDraftInput) {
     subcategory_id: input.subcategory_id || null,
     service_id: input.service_id || null,
     missing_service_text: input.missing_service_text.trim() || null,
+    delivery_mode: input.delivery_mode || null,
+    service_area_id: input.delivery_mode === "on_site" ? input.service_area_id || null : null,
     budget_type: input.budget_type,
     budget_min: input.budget_min,
     budget_max: input.budget_max,
@@ -353,6 +365,11 @@ export function validateRequestPublishFields(
   if (!input.service_id && input.missing_service_text.trim().length < 3) {
     errors.service = "בחרו שירות או תארו את השירות שלא מצאתם.";
   }
+  if (!input.delivery_mode) {
+    errors.delivery_mode = "יש לבחור האם השירות יינתן במקום או מרחוק";
+  } else if (input.delivery_mode === "on_site" && !input.service_area_id) {
+    errors.service_area_id = "יש לבחור אזור שירות מנוהל.";
+  }
 
   if (input.budget_type === "fixed") {
     const amount = input.budget_min;
@@ -376,6 +393,34 @@ export function validateRequestPublishFields(
   }
 
   return errors;
+}
+
+export async function saveAndPublishRequestDraft({
+  requestId,
+  input,
+  validationErrors,
+  save,
+  publish,
+}: {
+  requestId: string;
+  input: RequestDraftInput;
+  validationErrors: object;
+  save: (input: RequestDraftInput) => Promise<unknown>;
+  publish: (requestId: string) => Promise<string>;
+}): Promise<string | null> {
+  if (Object.keys(validationErrors).length > 0) return null;
+  await save(input);
+  return publish(requestId);
+}
+
+export function isDeliveryModeRequiredError(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) return false;
+  const candidate = error as { code?: unknown; message?: unknown };
+  return (
+    candidate.code === "22000" &&
+    typeof candidate.message === "string" &&
+    candidate.message.includes("Request delivery mode is required")
+  );
 }
 
 export function useSaveRequestDraft(requestId: string | null) {

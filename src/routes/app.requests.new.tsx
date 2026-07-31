@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
 
@@ -8,8 +8,9 @@ import { PageContainer } from "@/components/app/PageContainer";
 import { Section } from "@/components/app/Section";
 import { ErrorState, LoadingState } from "@/components/app/StateCard";
 import {
-  CURRENT_REQUEST_SCHEMA_SUPPORTS_DELIVERY,
   isRequestPublishDisabled,
+  isDeliveryModeRequiredError,
+  saveAndPublishRequestDraft,
   useAcquireRequestDraft,
   useCategories,
   usePublishRequest,
@@ -82,6 +83,8 @@ function CreateRequestPage() {
   const [questionnaireValid, setQuestionnaireValid] = useState(true);
   const [questionnairePending, setQuestionnairePending] = useState(false);
   const [taxonomySaving, setTaxonomySaving] = useState(false);
+  const autosaveTimerRef = useRef<number | null>(null);
+  const deliveryModeSelectRef = useRef<HTMLSelectElement>(null);
 
   const subcategoriesQuery = useSubcategories(categoryId || null);
   const servicesQuery = useServicesForProfession(subcategoryId || null);
@@ -167,13 +170,18 @@ function CreateRequestPage() {
   useEffect(() => {
     if (!initialized || !draftId || taxonomySaving) return;
     const timer = window.setTimeout(() => {
+      autosaveTimerRef.current = null;
       setAutosaveStatus("שומר טיוטה…");
       autosaveDraft(draftInput, {
         onSuccess: () => setAutosaveStatus("כל השינויים נשמרו בטיוטה הפרטית."),
         onError: () => setAutosaveStatus("השמירה האוטומטית נכשלה. הפרטים נשארו במסך."),
       });
     }, 800);
-    return () => window.clearTimeout(timer);
+    autosaveTimerRef.current = timer;
+    return () => {
+      window.clearTimeout(timer);
+      if (autosaveTimerRef.current === timer) autosaveTimerRef.current = null;
+    };
   }, [initialized, draftId, draftInput, taxonomySaving, autosaveDraft]);
 
   async function persistTaxonomy(next: Partial<RequestDraftInput>) {
@@ -194,15 +202,7 @@ function CreateRequestPage() {
     if ((subcategoriesQuery.data ?? []).length > 0 && !subcategoryId) {
       nextErrors.subcategory_id = "יש לבחור מקצוע.";
     }
-    if (CURRENT_REQUEST_SCHEMA_SUPPORTS_DELIVERY && !deliveryMode) {
-      nextErrors.delivery_mode = "יש לבחור אם השירות נדרש במקום או מרחוק.";
-    } else if (
-      CURRENT_REQUEST_SCHEMA_SUPPORTS_DELIVERY &&
-      deliveryMode === "on_site" &&
-      !serviceAreaId
-    ) {
-      nextErrors.service_area_id = "יש לבחור אזור שירות מנוהל.";
-    } else if (CURRENT_REQUEST_SCHEMA_SUPPORTS_DELIVERY && deliveryMode === "remote") {
+    if (deliveryMode === "remote") {
       const selectedService = servicesQuery.data?.find((service) => service.id === serviceId);
       if (!serviceId || !selectedService?.supports_remote) {
         nextErrors.service = "שירות מרחוק דורש שירות מנוהל שתומך בעבודה מרחוק.";
@@ -217,18 +217,56 @@ function CreateRequestPage() {
     return nextErrors;
   }
 
+  function focusDeliveryModeSelection() {
+    window.requestAnimationFrame(() => {
+      deliveryModeSelectRef.current?.focus();
+      deliveryModeSelectRef.current?.scrollIntoView?.({ block: "center" });
+    });
+  }
+
   async function publish(event: React.FormEvent) {
     event.preventDefault();
     if (!draftId) return;
     const nextErrors = validate();
     setErrors(nextErrors);
-    if (Object.keys(nextErrors).length || questionnairePending || taxonomySaving) return;
+    if (nextErrors.delivery_mode) {
+      focusDeliveryModeSelection();
+    }
+    if (
+      Object.keys(nextErrors).length ||
+      questionnairePending ||
+      taxonomySaving ||
+      saveDraft.isPending
+    ) {
+      return;
+    }
+
+    if (autosaveTimerRef.current !== null) {
+      window.clearTimeout(autosaveTimerRef.current);
+      autosaveTimerRef.current = null;
+    }
 
     try {
-      await saveDraft.mutateAsync(draftInput);
-      const publishedId = await publishRequest.mutateAsync(draftId);
+      const publishedId = await saveAndPublishRequestDraft({
+        requestId: draftId,
+        input: draftInput,
+        validationErrors: nextErrors,
+        save: saveDraft.mutateAsync,
+        publish: publishRequest.mutateAsync,
+      });
+      if (!publishedId) return;
       void navigate({ to: "/app/requests/$id", params: { id: publishedId }, replace: true });
-    } catch {
+    } catch (error) {
+      if (isDeliveryModeRequiredError(error)) {
+        setErrors((current) => ({
+          ...current,
+          delivery_mode: "יש לבחור האם השירות יינתן במקום או מרחוק",
+        }));
+        setAutosaveStatus("יש לבחור האם השירות יינתן במקום או מרחוק");
+        publishRequest.reset();
+        focusDeliveryModeSelection();
+        return;
+      }
       setAutosaveStatus("הפרסום נכשל. הטיוטה וכל הקבצים נשמרו וניתן לנסות שוב.");
     }
   }
@@ -416,8 +454,10 @@ function CreateRequestPage() {
               <div className="grid gap-5 sm:grid-cols-2">
                 <Field label="אופן קבלת השירות" error={errors.delivery_mode} required>
                   <select
+                    ref={deliveryModeSelectRef}
                     className={inputClass}
                     value={deliveryMode}
+                    aria-invalid={Boolean(errors.delivery_mode)}
                     onChange={(event) => {
                       const value = event.target.value as "on_site" | "remote" | "";
                       const selectedService = servicesQuery.data?.find(
@@ -426,6 +466,7 @@ function CreateRequestPage() {
                       const nextServiceId =
                         value === "remote" && !selectedService?.supports_remote ? "" : serviceId;
                       setDeliveryMode(value);
+                      setErrors((current) => ({ ...current, delivery_mode: undefined }));
                       setServiceAreaId(value === "on_site" ? serviceAreaId : "");
                       setServiceId(nextServiceId);
                       if (value === "remote") setMissingServiceText("");
@@ -542,7 +583,7 @@ function CreateRequestPage() {
                 <AttachmentUploader requestId={draftId} canEdit />
               </fieldset>
 
-              {publishRequest.isError ? (
+              {publishRequest.isError && !isDeliveryModeRequiredError(publishRequest.error) ? (
                 <ErrorState error={publishRequest.error} onRetry={() => publishRequest.reset()} />
               ) : null}
 

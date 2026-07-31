@@ -21,9 +21,11 @@ vi.mock("@/integrations/supabase/client", () => ({
 import {
   buildRequestDraftUpdatePayload,
   CURRENT_REQUEST_SCHEMA_SUPPORTS_DELIVERY,
+  isDeliveryModeRequiredError,
   isRequestPublishDisabled,
   normalizeRequestProjection,
   REQUEST_PROJECTION,
+  saveAndPublishRequestDraft,
   useRequest,
   validateRequestPublishFields,
 } from "@/lib/requests";
@@ -180,8 +182,8 @@ describe("request projection", () => {
   });
 });
 
-describe("request draft update compatibility", () => {
-  it("omits request delivery columns that are absent before migrations 7–10", () => {
+describe("request draft update payload", () => {
+  it("persists the selected delivery mode and on-site area", () => {
     const payload = buildRequestDraftUpdatePayload({
       title: "  תיקון נזילה  ",
       description: "  נדרשת בדיקה ותיקון של נזילה פעילה  ",
@@ -205,13 +207,33 @@ describe("request draft update compatibility", () => {
       subcategory_id: "subcategory-1",
       service_id: "service-1",
       missing_service_text: null,
+      delivery_mode: "on_site",
+      service_area_id: "service-area-1",
       budget_type: "range",
       budget_min: 500,
       budget_max: 1200,
     });
-    expect(payload).not.toHaveProperty("delivery_mode");
-    expect(payload).not.toHaveProperty("service_area_id");
     expect(payload).not.toHaveProperty("matching_policy");
+  });
+
+  it("persists remote mode and clears stale service-area data", () => {
+    const payload = buildRequestDraftUpdatePayload({
+      title: "ייעוץ מרחוק",
+      description: "",
+      city: "חיפה",
+      category_id: "category-1",
+      subcategory_id: "subcategory-1",
+      service_id: "service-1",
+      missing_service_text: "",
+      delivery_mode: "remote",
+      service_area_id: "stale-area",
+      budget_type: "open",
+      budget_min: null,
+      budget_max: null,
+    });
+
+    expect(payload.delivery_mode).toBe("remote");
+    expect(payload.service_area_id).toBeNull();
   });
 
   it("normalizes an empty optional description to null", () => {
@@ -234,7 +256,7 @@ describe("request draft update compatibility", () => {
   });
 });
 
-describe("request publish eligibility compatibility", () => {
+describe("request publish eligibility", () => {
   const validInput = {
     title: "תיקון נזילה",
     description: "",
@@ -243,8 +265,8 @@ describe("request publish eligibility compatibility", () => {
     subcategory_id: "subcategory-1",
     service_id: "service-1",
     missing_service_text: "",
-    delivery_mode: "" as const,
-    service_area_id: "",
+    delivery_mode: "on_site" as const,
+    service_area_id: "service-area-1",
     budget_type: "open" as const,
     budget_min: null,
     budget_max: null,
@@ -292,11 +314,11 @@ describe("request publish eligibility compatibility", () => {
     });
   });
 
-  it("does not require delivery fields before migrations 7–10", () => {
-    expect(CURRENT_REQUEST_SCHEMA_SUPPORTS_DELIVERY).toBe(false);
+  it("requires delivery fields for the managed publication schema", () => {
+    expect(CURRENT_REQUEST_SCHEMA_SUPPORTS_DELIVERY).toBe(true);
   });
 
-  it("does not disable publishing for background autosave alone", () => {
+  it("disables publishing for an in-flight background autosave", () => {
     expect(
       isRequestPublishDisabled({
         publishPending: false,
@@ -304,7 +326,7 @@ describe("request publish eligibility compatibility", () => {
         questionnairePending: false,
         taxonomySaving: false,
       }),
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it.each([
@@ -313,5 +335,111 @@ describe("request publish eligibility compatibility", () => {
     { publishPending: false, questionnairePending: false, taxonomySaving: true },
   ])("disables publishing during a required foreground operation", (state) => {
     expect(isRequestPublishDisabled({ ...state, autosavePending: false })).toBe(true);
+  });
+});
+
+describe("request publication sequencing", () => {
+  const validInput = {
+    title: "תיקון נזילה",
+    description: "",
+    city: "חיפה",
+    category_id: "category-1",
+    subcategory_id: "subcategory-1",
+    service_id: "service-1",
+    missing_service_text: "",
+    delivery_mode: "on_site" as "on_site" | "remote" | "",
+    service_area_id: "service-area-1",
+    budget_type: "open" as const,
+    budget_min: null,
+    budget_max: null,
+  };
+
+  it.each([
+    { label: "on_site", input: validInput },
+    {
+      label: "remote",
+      input: {
+        ...validInput,
+        delivery_mode: "remote" as const,
+        service_area_id: "",
+      },
+    },
+  ])("awaits the final $label update before publishing", async ({ input }) => {
+    const save = vi.fn().mockResolvedValue({ id: "draft-1" });
+    const publish = vi.fn().mockResolvedValue("request-1");
+    const errors = validateRequestPublishFields(input);
+
+    await expect(
+      saveAndPublishRequestDraft({
+        requestId: "draft-1",
+        input,
+        validationErrors: errors,
+        save,
+        publish,
+      }),
+    ).resolves.toBe("request-1");
+
+    expect(errors).toEqual({});
+    expect(save).toHaveBeenCalledWith(input);
+    expect(publish).toHaveBeenCalledWith("draft-1");
+    expect(save.mock.invocationCallOrder[0]).toBeLessThan(publish.mock.invocationCallOrder[0]);
+  });
+
+  it("blocks missing delivery mode before save or publish", async () => {
+    const input = {
+      ...validInput,
+      delivery_mode: "" as const,
+      service_area_id: "",
+    };
+    const save = vi.fn();
+    const publish = vi.fn();
+    const errors = validateRequestPublishFields(input);
+
+    await expect(
+      saveAndPublishRequestDraft({
+        requestId: "draft-1",
+        input,
+        validationErrors: errors,
+        save,
+        publish,
+      }),
+    ).resolves.toBeNull();
+
+    expect(errors.delivery_mode).toBe("יש לבחור האם השירות יינתן במקום או מרחוק");
+    expect(save).not.toHaveBeenCalled();
+    expect(publish).not.toHaveBeenCalled();
+  });
+
+  it("does not publish when the final draft update fails", async () => {
+    const updateError = new Error("Draft update failed");
+    const save = vi.fn().mockRejectedValue(updateError);
+    const publish = vi.fn();
+
+    await expect(
+      saveAndPublishRequestDraft({
+        requestId: "draft-1",
+        input: validInput,
+        validationErrors: {},
+        save,
+        publish,
+      }),
+    ).rejects.toBe(updateError);
+
+    expect(publish).not.toHaveBeenCalled();
+  });
+
+  it("recognizes only the backend missing-delivery validation", () => {
+    expect(
+      isDeliveryModeRequiredError({
+        code: "22000",
+        message: "Request delivery mode is required",
+      }),
+    ).toBe(true);
+    expect(
+      isDeliveryModeRequiredError({
+        code: "22000",
+        message: "Another validation failed",
+      }),
+    ).toBe(false);
   });
 });

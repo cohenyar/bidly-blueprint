@@ -373,6 +373,7 @@ export type Database = {
           closed_at: string | null;
           created_at: string;
           customer_id: string;
+          delivery_mode: string | null;
           description: string | null;
           id: string;
           missing_service_text: string | null;
@@ -380,6 +381,7 @@ export type Database = {
           published_at: string | null;
           schema_version: number;
           selected_offer_id: string | null;
+          service_area_id: string | null;
           service_id: string | null;
           status: Database["public"]["Enums"]["request_status"];
           subcategory_id: string | null;
@@ -395,6 +397,7 @@ export type Database = {
           closed_at?: string | null;
           created_at?: string;
           customer_id: string;
+          delivery_mode?: string | null;
           description?: string | null;
           id?: string;
           missing_service_text?: string | null;
@@ -402,6 +405,7 @@ export type Database = {
           published_at?: string | null;
           schema_version?: number;
           selected_offer_id?: string | null;
+          service_area_id?: string | null;
           service_id?: string | null;
           status?: Database["public"]["Enums"]["request_status"];
           subcategory_id?: string | null;
@@ -417,6 +421,7 @@ export type Database = {
           closed_at?: string | null;
           created_at?: string;
           customer_id?: string;
+          delivery_mode?: string | null;
           description?: string | null;
           id?: string;
           missing_service_text?: string | null;
@@ -424,6 +429,7 @@ export type Database = {
           published_at?: string | null;
           schema_version?: number;
           selected_offer_id?: string | null;
+          service_area_id?: string | null;
           service_id?: string | null;
           status?: Database["public"]["Enums"]["request_status"];
           subcategory_id?: string | null;
@@ -443,6 +449,13 @@ export type Database = {
             columns: ["selected_offer_id"];
             isOneToOne: false;
             referencedRelation: "offers";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "requests_service_area_id_fkey";
+            columns: ["service_area_id"];
+            isOneToOne: false;
+            referencedRelation: "service_areas";
             referencedColumns: ["id"];
           },
           {
@@ -497,6 +510,7 @@ export type Database = {
           slug: string;
           sort_order: number;
           subcategory_id: string;
+          supports_remote: boolean;
         };
         Insert: {
           created_at?: string;
@@ -506,6 +520,7 @@ export type Database = {
           slug: string;
           sort_order?: number;
           subcategory_id: string;
+          supports_remote?: boolean;
         };
         Update: {
           created_at?: string;
@@ -513,6 +528,7 @@ export type Database = {
           is_active?: boolean;
           name_he?: string;
           slug?: string;
+          supports_remote?: boolean;
           sort_order?: number;
           subcategory_id?: string;
         };
