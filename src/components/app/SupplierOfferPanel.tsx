@@ -88,12 +88,14 @@ export function SupplierOwnOffer({
         </div>
       </dl>
 
-      <div className="mt-4 rounded-xl border border-border p-4">
-        <p className="text-[11px] font-semibold text-muted-foreground">הודעה ללקוח</p>
-        <p className="mt-2 whitespace-pre-wrap text-[14px] leading-relaxed text-foreground">
-          {offer.message}
-        </p>
-      </div>
+      {offer.message.trim() ? (
+        <div className="mt-4 rounded-xl border border-border p-4">
+          <p className="text-[11px] font-semibold text-muted-foreground">פירוט ההצעה</p>
+          <p className="mt-2 whitespace-pre-wrap text-[14px] leading-relaxed text-foreground">
+            {offer.message}
+          </p>
+        </div>
+      ) : null}
       <p className="mt-4 text-[11px] text-muted-foreground">
         נשלחה ב־{formatDateTime(offer.created_at)}
       </p>
@@ -227,7 +229,7 @@ export function SupplierOfferForm({
         <div className="sm:col-span-2">
           <div className="flex items-center justify-between gap-3">
             <label htmlFor="offer-message" className="text-[12px] font-semibold text-foreground">
-              פירוט ההצעה
+              פירוט ההצעה (אופציונלי)
             </label>
             <span className="text-[11px] tabular-nums text-muted-foreground">
               {message.length}/2,000
@@ -237,7 +239,6 @@ export function SupplierOfferForm({
             id="offer-message"
             value={message}
             onChange={(event) => setMessage(event.target.value)}
-            minLength={20}
             maxLength={2000}
             rows={7}
             dir="auto"
@@ -245,10 +246,9 @@ export function SupplierOfferForm({
             aria-invalid={Boolean(errors.message)}
             aria-describedby={errors.message ? "offer-message-error" : "offer-message-help"}
             className="mt-1.5 block w-full resize-y rounded-lg border border-input bg-background px-3.5 py-3 text-[14px] leading-relaxed text-foreground shadow-e1 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15 disabled:opacity-60"
-            required
           />
           <p id="offer-message-help" className="mt-1 text-[11px] text-muted-foreground">
-            לפחות 20 תווים. מומלץ לציין ניסיון רלוונטי ומה כלול במחיר.
+            עד 2,000 תווים. ניתן לציין ניסיון רלוונטי ומה כלול במחיר.
           </p>
           {errors.message ? (
             <p id="offer-message-error" className="mt-1 text-[12px] text-danger">

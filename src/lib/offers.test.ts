@@ -43,6 +43,23 @@ describe("offer form validation", () => {
       message: validForm.message,
     });
   });
+
+  it.each(["", "קצר"])('accepts optional offer details: "%s"', (message) => {
+    expect(validateOfferForm({ ...validForm, message })).toEqual({});
+  });
+
+  it("rejects offer details longer than 2,000 characters", () => {
+    expect(validateOfferForm({ ...validForm, message: "א".repeat(2001) }).message).toBe(
+      "פירוט ההצעה יכול להכיל עד 2,000 תווים.",
+    );
+  });
+
+  it("keeps price and estimated days required when details are empty", () => {
+    const errors = validateOfferForm({ price: "", estimated_days: "", message: "" });
+    expect(errors.price).toBeTruthy();
+    expect(errors.estimated_days).toBeTruthy();
+    expect(errors.message).toBeUndefined();
+  });
 });
 
 describe("supplier offer action visibility", () => {

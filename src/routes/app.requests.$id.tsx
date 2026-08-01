@@ -1,11 +1,12 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
-import { ArrowRight, Ban, Inbox } from "lucide-react";
+import { ArrowRight, Ban } from "lucide-react";
 
 import { AttachmentUploader } from "@/components/app/AttachmentUploader";
+import { CustomerOffersPanel } from "@/components/app/CustomerOffersPanel";
 import { PageContainer } from "@/components/app/PageContainer";
 import { Section } from "@/components/app/Section";
 import { ErrorState, LoadingState, StateCard } from "@/components/app/StateCard";
-import { useCustomerRequestOffers, useSelectOffer, type CustomerOfferRow } from "@/lib/offers";
+import { useCustomerRequestOffers, useSelectOffer } from "@/lib/offers";
 import { useRequestAnswerReview } from "@/lib/request-questionnaire";
 import {
   formatBudget,
@@ -15,7 +16,7 @@ import {
   useCloseRequest,
   useRequest,
 } from "@/lib/requests";
-import { formatCurrency, formatDateTime } from "@/lib/i18n";
+import { formatDateTime } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/app/requests/$id")({
@@ -196,41 +197,25 @@ function RequestDetailsPage() {
             </Section>
 
             <Section eyebrow="הצעות ספקים" title="ההצעות שהתקבלו">
-              {offersQuery.isPending ? (
-                <LoadingState label="טוען הצעות…" />
-              ) : offersQuery.isError ? (
-                <ErrorState error={offersQuery.error} onRetry={() => void offersQuery.refetch()} />
-              ) : (offersQuery.data ?? []).length === 0 ? (
-                <StateCard
-                  icon={<Inbox className="h-5 w-5" strokeWidth={2.25} />}
-                  eyebrow="עדיין אין הצעות"
-                  title="הצעות מנותני שירות יופיעו כאן."
-                />
-              ) : (
-                <div className="grid gap-4">
-                  {(offersQuery.data ?? []).map((offer) => (
-                    <CustomerOfferCard
-                      key={offer.id}
-                      offer={offer}
-                      selected={r.selected_offer_id === offer.id}
-                      canSelect={r.status === "open" && offer.status === "submitted"}
-                      selecting={selectOffer.isPending && selectOffer.variables === offer.id}
-                      onSelect={() => {
-                        if (
-                          window.confirm(`לבחור בהצעה של ${offer.business_name}? הבחירה סופית.`)
-                        ) {
-                          void selectOffer.mutateAsync(offer.id);
-                        }
-                      }}
-                    />
-                  ))}
-                  {selectOffer.isError ? (
-                    <p role="alert" className="text-[12px] text-danger">
-                      בחירת ההצעה נכשלה. ייתכן שהבקשה או ההצעה כבר השתנו.
-                    </p>
-                  ) : null}
-                </div>
-              )}
+              <CustomerOffersPanel
+                isPending={offersQuery.isPending}
+                error={offersQuery.isError ? offersQuery.error : null}
+                offers={offersQuery.data ?? []}
+                selectedOfferId={r.selected_offer_id}
+                requestStatus={r.status}
+                selectingOfferId={selectOffer.isPending ? (selectOffer.variables ?? null) : null}
+                onRetry={() => void offersQuery.refetch()}
+                onSelect={(offer) => {
+                  if (window.confirm(`לבחור בהצעה של ${offer.business_name}? הבחירה סופית.`)) {
+                    void selectOffer.mutateAsync(offer.id);
+                  }
+                }}
+              />
+              {selectOffer.isError ? (
+                <p role="alert" className="mt-3 text-[12px] text-danger">
+                  בחירת ההצעה נכשלה. ייתכן שהבקשה או ההצעה כבר השתנו.
+                </p>
+              ) : null}
             </Section>
           </div>
 
@@ -292,100 +277,6 @@ function RequestDetailsPage() {
         </div>
       </div>
     </PageContainer>
-  );
-}
-
-const CUSTOMER_OFFER_STATUS_LABEL: Record<CustomerOfferRow["status"], string> = {
-  submitted: "ממתינה לבחירה",
-  selected: "נבחרה",
-  rejected: "לא נבחרה",
-  withdrawn: "נמשכה",
-};
-
-function CustomerOfferCard({
-  offer,
-  selected,
-  canSelect,
-  selecting,
-  onSelect,
-}: {
-  offer: CustomerOfferRow;
-  selected: boolean;
-  canSelect: boolean;
-  selecting: boolean;
-  onSelect: () => void;
-}) {
-  return (
-    <article
-      className={cn(
-        "rounded-2xl border bg-surface p-5 shadow-e1 sm:p-6",
-        selected ? "border-success/40" : "border-border",
-      )}
-    >
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h3 className="text-[17px] font-bold text-foreground">{offer.business_name}</h3>
-          <p className="mt-1 text-[12px] text-muted-foreground">
-            {[
-              offer.base_city,
-              offer.years_experience === null ? null : `${offer.years_experience} שנות ניסיון`,
-            ]
-              .filter(Boolean)
-              .join(" · ") || "פרטי ניסיון לא נמסרו"}
-          </p>
-        </div>
-        <span
-          className={cn(
-            "rounded-full px-3 py-1 text-[11px] font-semibold",
-            selected ? "bg-success-soft text-success" : "bg-surface-muted text-muted-foreground",
-          )}
-        >
-          {CUSTOMER_OFFER_STATUS_LABEL[offer.status]}
-        </span>
-      </div>
-
-      {offer.business_description ? (
-        <p className="mt-4 whitespace-pre-wrap text-[13px] leading-relaxed text-muted-foreground">
-          {offer.business_description}
-        </p>
-      ) : null}
-
-      <dl className="mt-5 grid gap-3 sm:grid-cols-2">
-        <div className="rounded-xl bg-surface-muted/50 p-4">
-          <dt className="text-[11px] font-semibold text-muted-foreground">מחיר</dt>
-          <dd className="mt-1 text-[21px] font-bold text-foreground">
-            {formatCurrency(offer.price)}
-          </dd>
-        </div>
-        <div className="rounded-xl bg-surface-muted/50 p-4">
-          <dt className="text-[11px] font-semibold text-muted-foreground">משך משוער</dt>
-          <dd className="mt-1 text-[17px] font-bold text-foreground">
-            {offer.estimated_days} ימים
-          </dd>
-        </div>
-      </dl>
-
-      <div className="mt-4 rounded-xl border border-border p-4">
-        <p className="whitespace-pre-wrap text-[14px] leading-relaxed text-foreground">
-          {offer.message}
-        </p>
-      </div>
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-[11px] text-muted-foreground">
-          נשלחה ב־{formatDateTime(offer.created_at)}
-        </p>
-        {canSelect ? (
-          <button
-            type="button"
-            disabled={selecting}
-            onClick={onSelect}
-            className="inline-flex h-10 items-center justify-center rounded-lg bg-primary px-4 text-[13px] font-semibold text-primary-foreground disabled:opacity-50"
-          >
-            {selecting ? "בוחר…" : "בחירת ההצעה"}
-          </button>
-        ) : null}
-      </div>
-    </article>
   );
 }
 

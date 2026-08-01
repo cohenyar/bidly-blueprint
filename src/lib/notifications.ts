@@ -83,6 +83,14 @@ export function useNotificationsRealtime() {
                 queryKey: ["supplier-matched-requests", "active"],
               });
             }
+            if (notification.type === "offer_received" && notification.request_id) {
+              void qc.invalidateQueries({
+                queryKey: ["customer-request-offers", notification.request_id],
+              });
+              void qc.invalidateQueries({
+                queryKey: ["request", notification.request_id],
+              });
+            }
           },
         )
         .subscribe();

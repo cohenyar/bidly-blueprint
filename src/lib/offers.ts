@@ -68,9 +68,8 @@ export function validateOfferForm(values: OfferFormValues): OfferValidationError
     errors.estimated_days = "מספר הימים חייב להיות בין 1 ל־365.";
   }
 
-  const message = values.message.trim();
-  if (message.length < 20 || message.length > 2000) {
-    errors.message = "פירוט ההצעה חייב להכיל בין 20 ל־2,000 תווים.";
+  if (values.message.trim().length > 2000) {
+    errors.message = "פירוט ההצעה יכול להכיל עד 2,000 תווים.";
   }
 
   return errors;
@@ -96,9 +95,8 @@ export function validateOffer(input: SubmitOfferInput): OfferValidationErrors {
   ) {
     errors.estimated_days = "מספר הימים חייב להיות בין 1 ל־365.";
   }
-  const message = input.message.trim();
-  if (message.length < 20 || message.length > 2000) {
-    errors.message = "פירוט ההצעה חייב להכיל בין 20 ל־2,000 תווים.";
+  if (input.message.trim().length > 2000) {
+    errors.message = "פירוט ההצעה יכול להכיל עד 2,000 תווים.";
   }
   return errors;
 }
@@ -112,6 +110,9 @@ type SupabaseLikeError = {
 
 const SUPPLIER_OFFER_PROJECTION =
   "id, request_id, price, estimated_days, message, status, created_at, updated_at, withdrawn_at";
+
+const CUSTOMER_OFFER_PROJECTION =
+  "id, request_id, price, estimated_days, message, status, created_at";
 
 function isNoRowsError(error: SupabaseLikeError | null) {
   return error?.code === "PGRST116";
@@ -153,6 +154,46 @@ function offerLookupError(
       operation,
       requestId,
       supplierId,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+    },
+  );
+}
+
+function customerOfferLookupError(
+  operation: "get_customer_request_offers" | "offers.customerRequest",
+  error: SupabaseLikeError,
+  requestId: string,
+) {
+  const diagnostic = {
+    operation,
+    requestId,
+    code: error.code ?? null,
+    message: error.message ?? null,
+    details: error.details ?? null,
+    hint: error.hint ?? null,
+  };
+
+  if (import.meta.env.DEV) {
+    console.error("[Customer offer lookup failed]", diagnostic);
+  }
+
+  return Object.assign(
+    new Error(
+      [
+        `${operation} failed`,
+        error.code ? `code=${error.code}` : null,
+        error.message ? `message=${error.message}` : null,
+        error.details ? `details=${error.details}` : null,
+        error.hint ? `hint=${error.hint}` : null,
+      ]
+        .filter(Boolean)
+        .join(" | "),
+    ),
+    {
+      operation,
+      requestId,
       code: error.code,
       details: error.details,
       hint: error.hint,
@@ -260,6 +301,9 @@ export function useSubmitOffer(requestId: string) {
       void queryClient.invalidateQueries({
         queryKey: ["supplier-matched-request", requestId],
       });
+      void queryClient.invalidateQueries({
+        queryKey: ["customer-request-offers", requestId],
+      });
     },
   });
 }
@@ -288,17 +332,59 @@ export function useWithdrawOffer(requestId: string) {
   });
 }
 
+export async function fetchCustomerRequestOffers(requestId: string): Promise<CustomerOfferRow[]> {
+  const rpcResult = await supabase.rpc("get_customer_request_offers", {
+    _request_id: requestId,
+  });
+
+  if (!rpcResult.error) return rpcResult.data ?? [];
+
+  if (rpcResult.error.code !== "PGRST202") {
+    throw customerOfferLookupError("get_customer_request_offers", rpcResult.error, requestId);
+  }
+
+  if (import.meta.env.DEV) {
+    console.warn(
+      "[get_customer_request_offers unavailable; using request-owner RLS compatibility query]",
+      {
+        requestId,
+        code: rpcResult.error.code,
+        message: rpcResult.error.message,
+        details: rpcResult.error.details,
+        hint: rpcResult.error.hint,
+      },
+    );
+  }
+
+  // Compatibility for managed backends that have not yet applied the Core
+  // hardening RPC. The original offers SELECT policy restricts these rows to
+  // the authenticated owner of this request; supplier identity remains generic
+  // until the SECURITY DEFINER projection RPC is available.
+  const directResult = await supabase
+    .from("offers")
+    .select(CUSTOMER_OFFER_PROJECTION)
+    .eq("request_id", requestId)
+    .order("created_at", { ascending: true });
+
+  if (directResult.error) {
+    throw customerOfferLookupError("offers.customerRequest", directResult.error, requestId);
+  }
+
+  return (directResult.data ?? []).map((offer) => ({
+    ...offer,
+    business_name: "נותן שירות",
+    business_description: null,
+    base_city: null,
+    years_experience: null,
+  })) as CustomerOfferRow[];
+}
+
 export function useCustomerRequestOffers(requestId: string) {
   return useQuery({
     queryKey: ["customer-request-offers", requestId],
     enabled: Boolean(requestId),
-    queryFn: async (): Promise<CustomerOfferRow[]> => {
-      const { data, error } = await supabase.rpc("get_customer_request_offers", {
-        _request_id: requestId,
-      });
-      if (error) throw error;
-      return data ?? [];
-    },
+    queryFn: () => fetchCustomerRequestOffers(requestId),
+    retry: false,
   });
 }
 
