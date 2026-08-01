@@ -24,9 +24,9 @@ export const Route = createFileRoute("/supplier/requests/$id")({
 
 function SupplierRequestDetailsPage() {
   const { id } = Route.useParams();
-  const { role } = useAuth();
+  const { role, user } = useAuth();
   const requestQuery = useActiveMatchedRequest(id);
-  const ownOfferQuery = useOwnOffer(id);
+  const ownOfferQuery = useOwnOffer(id, user?.id);
   const [offerSubmitted, setOfferSubmitted] = useState(false);
   const [offerFormOpen, setOfferFormOpen] = useState(false);
 
@@ -69,6 +69,11 @@ function SupplierRequestDetailsPage() {
               icon={<FileText className="h-5 w-5" />}
               eyebrow="לא ניתן לבדוק את ההצעה"
               title="פרטי הבקשה אינם זמינים ולא הצלחנו לטעון את ההצעה שלכם."
+              body={
+                import.meta.env.DEV && ownOfferQuery.error instanceof Error ? (
+                  <p dir="auto">{ownOfferQuery.error.message}</p>
+                ) : undefined
+              }
               action={
                 <button
                   type="button"
@@ -243,7 +248,13 @@ function SupplierRequestDetailsPage() {
                   icon={<FileText className="h-5 w-5" />}
                   eyebrow="לא ניתן לטעון את ההצעה"
                   title="לא הצלחנו לבדוק אם קיימת הצעה שלכם."
-                  body="כדי למנוע שליחה כפולה, טענו מחדש לפני שתמשיכו."
+                  body={
+                    import.meta.env.DEV && ownOfferQuery.error instanceof Error ? (
+                      <p dir="auto">{ownOfferQuery.error.message}</p>
+                    ) : (
+                      "כדי למנוע שליחה כפולה, טענו מחדש לפני שתמשיכו."
+                    )
+                  }
                   action={
                     <button
                       type="button"

@@ -110,6 +110,97 @@ type SupabaseLikeError = {
   hint?: string;
 };
 
+const SUPPLIER_OFFER_PROJECTION =
+  "id, request_id, price, estimated_days, message, status, created_at, updated_at, withdrawn_at";
+
+function isNoRowsError(error: SupabaseLikeError | null) {
+  return error?.code === "PGRST116";
+}
+
+function offerLookupError(
+  operation: "get_supplier_offer" | "offers.maybeSingle",
+  error: SupabaseLikeError,
+  requestId: string,
+  supplierId: string,
+) {
+  const diagnostic = {
+    operation,
+    requestId,
+    supplierId,
+    code: error.code ?? null,
+    message: error.message ?? null,
+    details: error.details ?? null,
+    hint: error.hint ?? null,
+  };
+
+  if (import.meta.env.DEV) {
+    console.error("[Supplier offer lookup failed]", diagnostic);
+  }
+
+  return Object.assign(
+    new Error(
+      [
+        `${operation} failed`,
+        error.code ? `code=${error.code}` : null,
+        error.message ? `message=${error.message}` : null,
+        error.details ? `details=${error.details}` : null,
+        error.hint ? `hint=${error.hint}` : null,
+      ]
+        .filter(Boolean)
+        .join(" | "),
+    ),
+    {
+      operation,
+      requestId,
+      supplierId,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+    },
+  );
+}
+
+export async function fetchSupplierOwnOffer(
+  requestId: string,
+  supplierId: string,
+): Promise<OfferRow | null> {
+  const rpcResult = await supabase.rpc("get_supplier_offer", {
+    _request_id: requestId,
+  });
+
+  if (!rpcResult.error) return rpcResult.data?.[0] ?? null;
+  if (isNoRowsError(rpcResult.error)) return null;
+
+  // Compatibility for managed backends that have not yet applied the Core
+  // hardening migration which creates get_supplier_offer(). Once present, the
+  // SECURITY DEFINER RPC remains the only path used.
+  if (rpcResult.error.code !== "PGRST202") {
+    throw offerLookupError("get_supplier_offer", rpcResult.error, requestId, supplierId);
+  }
+
+  if (import.meta.env.DEV) {
+    console.warn("[get_supplier_offer unavailable; using supplier-scoped compatibility query]", {
+      requestId,
+      supplierId,
+      code: rpcResult.error.code,
+      message: rpcResult.error.message,
+      details: rpcResult.error.details,
+      hint: rpcResult.error.hint,
+    });
+  }
+
+  const directResult = await supabase
+    .from("offers")
+    .select(SUPPLIER_OFFER_PROJECTION)
+    .eq("request_id", requestId)
+    .eq("supplier_id", supplierId)
+    .maybeSingle();
+
+  if (!directResult.error) return directResult.data as OfferRow | null;
+  if (isNoRowsError(directResult.error)) return null;
+  throw offerLookupError("offers.maybeSingle", directResult.error, requestId, supplierId);
+}
+
 export function offerSubmissionErrorMessage(error: unknown): string {
   const candidate = error as SupabaseLikeError | null;
   const code = candidate?.code ?? "";
@@ -136,17 +227,11 @@ export function offerSubmissionErrorMessage(error: unknown): string {
   return candidate?.message || "שליחת ההצעה נכשלה. נסו שוב בעוד רגע.";
 }
 
-export function useOwnOffer(requestId: string, enabled = true) {
+export function useOwnOffer(requestId: string, supplierId: string | undefined, enabled = true) {
   return useQuery({
-    queryKey: ["supplier-own-offer", requestId],
-    enabled: enabled && Boolean(requestId),
-    queryFn: async (): Promise<OfferRow | null> => {
-      const { data, error } = await supabase.rpc("get_supplier_offer", {
-        _request_id: requestId,
-      });
-      if (error) throw error;
-      return data?.[0] ?? null;
-    },
+    queryKey: ["supplier-own-offer", requestId, supplierId],
+    enabled: enabled && Boolean(requestId) && Boolean(supplierId),
+    queryFn: () => (supplierId ? fetchSupplierOwnOffer(requestId, supplierId) : null),
   });
 }
 

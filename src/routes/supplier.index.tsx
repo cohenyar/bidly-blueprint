@@ -1,13 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { BriefcaseBusiness, CheckCircle2, Inbox } from "lucide-react";
-import { useState } from "react";
+import { BriefcaseBusiness, CheckCircle2 } from "lucide-react";
 
 import { PageContainer } from "@/components/app/PageContainer";
 import { DashboardProfileCompletionPanel } from "@/components/app/ProfileCompletionPanel";
-import { Section } from "@/components/app/Section";
-import { ErrorState, LoadingState, StateCard } from "@/components/app/StateCard";
+import { ErrorState, LoadingState } from "@/components/app/StateCard";
 import { SupplierEnhancementNotice } from "@/components/app/SupplierEnhancementNotice";
-import { SupplierMatchedRequestCard } from "@/components/app/SupplierMatchedRequestCard";
 import {
   computeCompletion,
   isSupplierProfileComplete,
@@ -22,11 +19,7 @@ import {
   useServices,
   useSupplierOnboardingState,
 } from "@/lib/supplier-profile";
-import {
-  MATCH_SCORE_THRESHOLDS,
-  type MatchScoreThreshold,
-  useActiveMatchedRequests,
-} from "@/lib/supplier-requests";
+import { useActiveMatchedRequests } from "@/lib/supplier-requests";
 
 export const Route = createFileRoute("/supplier/")({
   component: SupplierDashboardPage,
@@ -34,7 +27,6 @@ export const Route = createFileRoute("/supplier/")({
 });
 
 function SupplierDashboardPage() {
-  const [minimumMatchScore, setMinimumMatchScore] = useState<MatchScoreThreshold>(50);
   const profileQuery = useMySupplierProfile();
   const catalogCategoriesQuery = useCategoriesForSupplier();
   const catalogProfessionsQuery = useProfessionsForSupplier();
@@ -45,7 +37,7 @@ function SupplierDashboardPage() {
   const servicesQuery = useMySupplierServices();
   const areasQuery = useMySupplierServiceAreas();
   const onboardingQuery = useSupplierOnboardingState();
-  const matchesQuery = useActiveMatchedRequests(minimumMatchScore);
+  const matchesQuery = useActiveMatchedRequests();
 
   const loading =
     profileQuery.isLoading ||
@@ -187,68 +179,27 @@ function SupplierDashboardPage() {
 
               <DashboardProfileCompletionPanel status={completion} />
 
-              <Section
-                eyebrow="התאמות פעילות"
-                title="בקשות מותאמות"
-                action={
-                  !isComplete ? (
-                    <Link
-                      to="/supplier/profile"
-                      className="inline-flex h-10 items-center justify-center rounded-lg border border-border bg-surface px-4 text-[13px] font-semibold text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-                    >
-                      עריכת פרופיל
-                    </Link>
-                  ) : undefined
-                }
-              >
-                <div className="mb-4 flex items-center justify-end gap-2">
-                  <label
-                    htmlFor="minimum-match-score"
-                    className="text-[12px] font-semibold text-muted-foreground"
+              <div className="flex flex-wrap justify-end gap-3">
+                {!isComplete ? (
+                  <Link
+                    to="/supplier/profile"
+                    className="inline-flex h-10 items-center justify-center rounded-lg border border-border bg-surface px-4 text-[13px] font-semibold text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                   >
-                    סינון לפי התאמה
-                  </label>
-                  <select
-                    id="minimum-match-score"
-                    value={minimumMatchScore}
-                    onChange={(event) =>
-                      setMinimumMatchScore(Number(event.target.value) as MatchScoreThreshold)
-                    }
-                    className="h-9 rounded-lg border border-border bg-surface px-3 text-[12px] font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-                  >
-                    {MATCH_SCORE_THRESHOLDS.map((threshold) => (
-                      <option key={threshold} value={threshold}>
-                        {threshold === 50 ? "כל ההתאמות" : `${threshold}%+`}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                {matches.length === 0 ? (
-                  <SupplierWorkspaceEmptyState />
-                ) : (
-                  <div className="grid gap-4 lg:grid-cols-2">
-                    {matches.map((request) => (
-                      <SupplierMatchedRequestCard key={request.id} request={request} />
-                    ))}
-                  </div>
-                )}
-              </Section>
+                    עריכת פרופיל
+                  </Link>
+                ) : null}
+                <Link
+                  to="/supplier/requests"
+                  className="inline-flex h-10 items-center justify-center rounded-lg bg-primary px-4 text-[13px] font-semibold text-primary-foreground shadow-e1 hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                >
+                  צפייה בבקשות המותאמות
+                </Link>
+              </div>
             </div>
           )}
         </div>
       </div>
     </PageContainer>
-  );
-}
-
-export function SupplierWorkspaceEmptyState() {
-  return (
-    <StateCard
-      icon={<Inbox className="h-5 w-5" strokeWidth={2.25} />}
-      eyebrow="אין התאמות פעילות"
-      title="אין כרגע בקשות שמתאימות לפרופיל שלכם."
-      body="בקשות חדשות יופיעו כאן אוטומטית כשהן יתאימו לתחומים שבחרתם והפרופיל יהיה מלא."
-    />
   );
 }
 

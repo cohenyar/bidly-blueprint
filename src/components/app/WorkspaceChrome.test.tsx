@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const navigationMock = vi.hoisted(() => vi.fn());
+const routeState = vi.hoisted(() => ({ current: "/supplier" }));
 
 vi.mock("@tanstack/react-router", () => ({
   Link: ({
@@ -18,7 +19,7 @@ vi.mock("@tanstack/react-router", () => ({
     activeOptions?: unknown;
     activeProps?: { className?: string };
   }) => {
-    const isActive = to === "/supplier";
+    const isActive = routeState.current === to;
     return (
       <a
         href={to}
@@ -59,6 +60,7 @@ describe("WorkspaceHeader", () => {
   afterEach(() => {
     cleanup();
     navigationMock.mockReset();
+    routeState.current = "/supplier";
   });
 
   it("links the workspace item to the existing supplier dashboard", () => {
@@ -77,5 +79,14 @@ describe("WorkspaceHeader", () => {
     expect(link.getAttribute("aria-current")).toBe("page");
     expect(link.className).toContain("bg-accent");
     expect(link.className).toContain("text-foreground");
+  });
+
+  it("does not mark the workspace item active on the matched-request list", () => {
+    routeState.current = "/supplier/requests";
+    render(<WorkspaceHeader homeTo="/supplier" />);
+    const link = screen.getByRole("link", { name: "מרחב עבודה" });
+
+    expect(link.getAttribute("aria-current")).toBeNull();
+    expect(link.className).not.toMatch(/(?:^|\s)bg-accent(?:\s|$)/);
   });
 });

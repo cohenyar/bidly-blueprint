@@ -6,25 +6,37 @@ const navigateMock = vi.hoisted(() => vi.fn());
 const authState = vi.hoisted(() => ({
   current: { user: null as { id: string } | null, role: null as string | null, loading: true },
 }));
+const routeState = vi.hoisted(() => ({ current: "/supplier" }));
 
 vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (config: unknown) => ({ options: config }),
   Link: ({
     children,
     to,
-    activeOptions: _activeOptions,
-    activeProps: _activeProps,
+    activeOptions,
+    activeProps,
+    className,
     ...props
   }: AnchorHTMLAttributes<HTMLAnchorElement> & {
     children: ReactNode;
     to: string;
-    activeOptions?: unknown;
-    activeProps?: unknown;
-  }) => (
-    <a href={to} {...props}>
-      {children}
-    </a>
-  ),
+    activeOptions?: { exact?: boolean };
+    activeProps?: { className?: string };
+  }) => {
+    const isActive = activeOptions?.exact
+      ? routeState.current === to
+      : routeState.current.startsWith(to);
+    return (
+      <a
+        href={to}
+        className={`${className ?? ""} ${isActive ? (activeProps?.className ?? "") : ""}`}
+        aria-current={isActive ? "page" : undefined}
+        {...props}
+      >
+        {children}
+      </a>
+    );
+  },
   Outlet: () => <div data-testid="supplier-outlet" />,
   useNavigate: () => navigateMock,
 }));
@@ -38,7 +50,7 @@ vi.mock("@/lib/auth-context", () => ({
   useAuth: () => authState.current,
 }));
 
-import { SupplierWorkspaceEmptyState } from "@/routes/supplier.index";
+import { SupplierWorkspaceEmptyState } from "@/components/app/SupplierMatchedRequestsList";
 import { Route as SupplierRoute, SupplierNavigation } from "@/routes/supplier";
 
 const SupplierLayout = (SupplierRoute as unknown as { options: { component: ComponentType } })
@@ -49,6 +61,17 @@ describe("supplier navigation", () => {
   beforeEach(() => {
     navigateMock.mockReset();
     authState.current = { user: null, role: null, loading: true };
+    routeState.current = "/supplier";
+  });
+
+  it("opens and activates the dedicated matched-request list", () => {
+    routeState.current = "/supplier/requests";
+    render(<SupplierNavigation />);
+    const link = screen.getByRole("link", { name: "בקשות מותאמות" });
+
+    expect(link.getAttribute("href")).toBe("/supplier/requests");
+    expect(link.getAttribute("aria-current")).toBe("page");
+    expect(link.className).toContain("bg-accent");
   });
 
   it("keeps the existing profile navigation route available", () => {

@@ -18,6 +18,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as SupplierIndexRouteImport } from './routes/supplier.index'
 import { Route as AppIndexRouteImport } from './routes/app.index'
 import { Route as SupplierProfileRouteImport } from './routes/supplier.profile'
+import { Route as SupplierRequestsIndexRouteImport } from './routes/supplier.requests.index'
 import { Route as AppRequestsIndexRouteImport } from './routes/app.requests.index'
 import { Route as SupplierRequestsIdRouteImport } from './routes/supplier.requests.$id'
 import { Route as AppRequestsNewRouteImport } from './routes/app.requests.new'
@@ -68,6 +69,11 @@ const SupplierProfileRoute = SupplierProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => SupplierRoute,
 } as any)
+const SupplierRequestsIndexRoute = SupplierRequestsIndexRouteImport.update({
+  id: '/requests/',
+  path: '/requests/',
+  getParentRoute: () => SupplierRoute,
+} as any)
 const AppRequestsIndexRoute = AppRequestsIndexRouteImport.update({
   id: '/requests/',
   path: '/requests/',
@@ -103,6 +109,7 @@ export interface FileRoutesByFullPath {
   '/app/requests/new': typeof AppRequestsNewRoute
   '/supplier/requests/$id': typeof SupplierRequestsIdRoute
   '/app/requests/': typeof AppRequestsIndexRoute
+  '/supplier/requests/': typeof SupplierRequestsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -116,6 +123,7 @@ export interface FileRoutesByTo {
   '/app/requests/new': typeof AppRequestsNewRoute
   '/supplier/requests/$id': typeof SupplierRequestsIdRoute
   '/app/requests': typeof AppRequestsIndexRoute
+  '/supplier/requests': typeof SupplierRequestsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -132,6 +140,7 @@ export interface FileRoutesById {
   '/app/requests/new': typeof AppRequestsNewRoute
   '/supplier/requests/$id': typeof SupplierRequestsIdRoute
   '/app/requests/': typeof AppRequestsIndexRoute
+  '/supplier/requests/': typeof SupplierRequestsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -149,6 +158,7 @@ export interface FileRouteTypes {
     | '/app/requests/new'
     | '/supplier/requests/$id'
     | '/app/requests/'
+    | '/supplier/requests/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -162,6 +172,7 @@ export interface FileRouteTypes {
     | '/app/requests/new'
     | '/supplier/requests/$id'
     | '/app/requests'
+    | '/supplier/requests'
   id:
     | '__root__'
     | '/'
@@ -177,6 +188,7 @@ export interface FileRouteTypes {
     | '/app/requests/new'
     | '/supplier/requests/$id'
     | '/app/requests/'
+    | '/supplier/requests/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -253,6 +265,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SupplierProfileRouteImport
       parentRoute: typeof SupplierRoute
     }
+    '/supplier/requests/': {
+      id: '/supplier/requests/'
+      path: '/requests'
+      fullPath: '/supplier/requests/'
+      preLoaderRoute: typeof SupplierRequestsIndexRouteImport
+      parentRoute: typeof SupplierRoute
+    }
     '/app/requests/': {
       id: '/app/requests/'
       path: '/requests'
@@ -304,12 +323,14 @@ interface SupplierRouteChildren {
   SupplierProfileRoute: typeof SupplierProfileRoute
   SupplierIndexRoute: typeof SupplierIndexRoute
   SupplierRequestsIdRoute: typeof SupplierRequestsIdRoute
+  SupplierRequestsIndexRoute: typeof SupplierRequestsIndexRoute
 }
 
 const SupplierRouteChildren: SupplierRouteChildren = {
   SupplierProfileRoute: SupplierProfileRoute,
   SupplierIndexRoute: SupplierIndexRoute,
   SupplierRequestsIdRoute: SupplierRequestsIdRoute,
+  SupplierRequestsIndexRoute: SupplierRequestsIndexRoute,
 }
 
 const SupplierRouteWithChildren = SupplierRoute._addFileChildren(
