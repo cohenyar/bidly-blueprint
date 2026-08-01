@@ -224,12 +224,7 @@ function SupplierDashboardPage() {
                   </select>
                 </div>
                 {matches.length === 0 ? (
-                  <StateCard
-                    icon={<Inbox className="h-5 w-5" strokeWidth={2.25} />}
-                    eyebrow="אין התאמות פעילות"
-                    title="אין כרגע בקשות שמתאימות לפרופיל שלכם."
-                    body="בקשות חדשות יופיעו כאן אוטומטית כשהן יתאימו לתחומים שבחרתם והפרופיל יהיה מלא."
-                  />
+                  <SupplierWorkspaceEmptyState />
                 ) : (
                   <div className="grid gap-4 lg:grid-cols-2">
                     {matches.map((request) => (
@@ -243,6 +238,17 @@ function SupplierDashboardPage() {
         </div>
       </div>
     </PageContainer>
+  );
+}
+
+export function SupplierWorkspaceEmptyState() {
+  return (
+    <StateCard
+      icon={<Inbox className="h-5 w-5" strokeWidth={2.25} />}
+      eyebrow="אין התאמות פעילות"
+      title="אין כרגע בקשות שמתאימות לפרופיל שלכם."
+      body="בקשות חדשות יופיעו כאן אוטומטית כשהן יתאימו לתחומים שבחרתם והפרופיל יהיה מלא."
+    />
   );
 }
 

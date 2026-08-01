@@ -1,9 +1,14 @@
-import type { AnchorHTMLAttributes, ReactNode } from "react";
-import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import type { AnchorHTMLAttributes, ComponentType, ReactNode } from "react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const navigateMock = vi.hoisted(() => vi.fn());
+const authState = vi.hoisted(() => ({
+  current: { user: null as { id: string } | null, role: null as string | null, loading: true },
+}));
 
 vi.mock("@tanstack/react-router", () => ({
-  createFileRoute: () => (config: unknown) => config,
+  createFileRoute: () => (config: unknown) => ({ options: config }),
   Link: ({
     children,
     to,
@@ -20,8 +25,8 @@ vi.mock("@tanstack/react-router", () => ({
       {children}
     </a>
   ),
-  Outlet: () => null,
-  useNavigate: () => vi.fn(),
+  Outlet: () => <div data-testid="supplier-outlet" />,
+  useNavigate: () => navigateMock,
 }));
 
 vi.mock("@/components/app/WorkspaceChrome", () => ({
@@ -30,13 +35,21 @@ vi.mock("@/components/app/WorkspaceChrome", () => ({
 }));
 
 vi.mock("@/lib/auth-context", () => ({
-  useAuth: () => ({ user: null, role: null, loading: true }),
+  useAuth: () => authState.current,
 }));
 
-import { SupplierNavigation } from "@/routes/supplier";
+import { SupplierWorkspaceEmptyState } from "@/routes/supplier.index";
+import { Route as SupplierRoute, SupplierNavigation } from "@/routes/supplier";
+
+const SupplierLayout = (SupplierRoute as unknown as { options: { component: ComponentType } })
+  .options.component;
 
 describe("supplier navigation", () => {
   afterEach(cleanup);
+  beforeEach(() => {
+    navigateMock.mockReset();
+    authState.current = { user: null, role: null, loading: true };
+  });
 
   it("keeps the existing profile navigation route available", () => {
     render(<SupplierNavigation />);
@@ -44,5 +57,21 @@ describe("supplier navigation", () => {
     expect(screen.getByRole("link", { name: "פרופיל" }).getAttribute("href")).toBe(
       "/supplier/profile",
     );
+  });
+
+  it("does not render the supplier workspace for a customer", async () => {
+    authState.current = { user: { id: "customer-1" }, role: "customer", loading: false };
+
+    render(<SupplierLayout />);
+
+    await waitFor(() => expect(navigateMock).toHaveBeenCalledWith({ to: "/app" }));
+    expect(screen.queryByTestId("supplier-outlet")).toBeNull();
+  });
+
+  it("keeps a clear empty state when the supplier has no active matches", () => {
+    render(<SupplierWorkspaceEmptyState />);
+
+    expect(screen.getByText("אין התאמות פעילות")).toBeTruthy();
+    expect(screen.getByText("אין כרגע בקשות שמתאימות לפרופיל שלכם.")).toBeTruthy();
   });
 });

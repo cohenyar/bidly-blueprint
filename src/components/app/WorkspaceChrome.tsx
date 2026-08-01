@@ -37,9 +37,14 @@ export function WorkspaceHeader({
               <BidlyLogo />
             </Link>
             <span aria-hidden className="hidden h-4 w-px bg-border sm:inline-block" />
-            <span className="hidden truncate text-[12px] font-semibold uppercase tracking-[0.14em] text-muted-foreground sm:inline-block">
+            <Link
+              to={homeTo}
+              activeOptions={{ exact: true }}
+              className="hidden truncate rounded-md px-1.5 py-1 text-[12px] font-semibold uppercase tracking-[0.14em] text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 sm:inline-block"
+              activeProps={{ className: "bg-accent text-foreground" }}
+            >
               מרחב עבודה
-            </span>
+            </Link>
             {extra}
           </div>
           <div className="flex items-center gap-2">
