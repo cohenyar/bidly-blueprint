@@ -26,6 +26,10 @@ function SupplierLayout() {
       void navigate({ to: "/login" });
       return;
     }
+    if (!role) {
+      void navigate({ to: "/register", search: { oauth: true } });
+      return;
+    }
     if (role !== "supplier") {
       void navigate({ to: "/app" });
     }

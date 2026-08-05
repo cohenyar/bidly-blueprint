@@ -21,12 +21,16 @@ function AppLayout() {
       void navigate({ to: "/login" });
       return;
     }
+    if (!loading && user && !role) {
+      void navigate({ to: "/register", search: { oauth: true } });
+      return;
+    }
     if (!loading && role === "supplier") {
       void navigate({ to: "/supplier" });
     }
   }, [loading, user, role, navigate]);
 
-  if (loading || !user || role === "supplier") return <WorkspaceSkeleton />;
+  if (loading || !user || !role || role === "supplier") return <WorkspaceSkeleton />;
 
   return (
     <div className="min-h-screen bg-background text-foreground">

@@ -18,6 +18,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as SupplierIndexRouteImport } from './routes/supplier.index'
 import { Route as AppIndexRouteImport } from './routes/app.index'
 import { Route as SupplierProfileRouteImport } from './routes/supplier.profile'
+import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as SupplierRequestsIndexRouteImport } from './routes/supplier.requests.index'
 import { Route as AppRequestsIndexRouteImport } from './routes/app.requests.index'
 import { Route as SupplierRequestsIdRouteImport } from './routes/supplier.requests.$id'
@@ -69,6 +70,11 @@ const SupplierProfileRoute = SupplierProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => SupplierRoute,
 } as any)
+const AuthCallbackRoute = AuthCallbackRouteImport.update({
+  id: '/auth/callback',
+  path: '/auth/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SupplierRequestsIndexRoute = SupplierRequestsIndexRouteImport.update({
   id: '/requests/',
   path: '/requests/',
@@ -102,6 +108,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/supplier': typeof SupplierRouteWithChildren
+  '/auth/callback': typeof AuthCallbackRoute
   '/supplier/profile': typeof SupplierProfileRoute
   '/app/': typeof AppIndexRoute
   '/supplier/': typeof SupplierIndexRoute
@@ -116,6 +123,7 @@ export interface FileRoutesByTo {
   '/dev-showcase': typeof DevShowcaseRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/supplier/profile': typeof SupplierProfileRoute
   '/app': typeof AppIndexRoute
   '/supplier': typeof SupplierIndexRoute
@@ -133,6 +141,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/supplier': typeof SupplierRouteWithChildren
+  '/auth/callback': typeof AuthCallbackRoute
   '/supplier/profile': typeof SupplierProfileRoute
   '/app/': typeof AppIndexRoute
   '/supplier/': typeof SupplierIndexRoute
@@ -151,6 +160,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/register'
     | '/supplier'
+    | '/auth/callback'
     | '/supplier/profile'
     | '/app/'
     | '/supplier/'
@@ -165,6 +175,7 @@ export interface FileRouteTypes {
     | '/dev-showcase'
     | '/login'
     | '/register'
+    | '/auth/callback'
     | '/supplier/profile'
     | '/app'
     | '/supplier'
@@ -181,6 +192,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/register'
     | '/supplier'
+    | '/auth/callback'
     | '/supplier/profile'
     | '/app/'
     | '/supplier/'
@@ -198,6 +210,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   RegisterRoute: typeof RegisterRoute
   SupplierRoute: typeof SupplierRouteWithChildren
+  AuthCallbackRoute: typeof AuthCallbackRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -264,6 +277,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/supplier/profile'
       preLoaderRoute: typeof SupplierProfileRouteImport
       parentRoute: typeof SupplierRoute
+    }
+    '/auth/callback': {
+      id: '/auth/callback'
+      path: '/auth/callback'
+      fullPath: '/auth/callback'
+      preLoaderRoute: typeof AuthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/supplier/requests/': {
       id: '/supplier/requests/'
@@ -344,6 +364,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   RegisterRoute: RegisterRoute,
   SupplierRoute: SupplierRouteWithChildren,
+  AuthCallbackRoute: AuthCallbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

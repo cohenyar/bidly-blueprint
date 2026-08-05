@@ -2,12 +2,8 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { ArrowLeft } from "lucide-react";
 
-import {
-  AuthShell,
-  AuthField,
-  authInputClass,
-  authSubmitClass,
-} from "@/components/app/AuthCard";
+import { AuthShell, AuthField, authInputClass, authSubmitClass } from "@/components/app/AuthCard";
+import { AuthMethodDivider, GoogleOAuthButton } from "@/components/app/GoogleOAuthButton";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/login")({
@@ -61,6 +57,9 @@ function LoginPage() {
       }
     >
       <form onSubmit={onSubmit} className="space-y-5">
+        <GoogleOAuthButton onError={setError} />
+        <AuthMethodDivider />
+
         <AuthField label="דוא״ל">
           <input
             type="email"

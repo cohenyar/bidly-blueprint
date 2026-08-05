@@ -804,6 +804,10 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      complete_registration_role: {
+        Args: { _role: Database["public"]["Enums"]["app_role"] };
+        Returns: Database["public"]["Enums"]["app_role"];
+      };
       _deactivate_matches_for_request: {
         Args: { _request_id: string };
         Returns: number;

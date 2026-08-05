@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { Session } from "@supabase/supabase-js";
 
@@ -169,12 +169,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [queryClient]);
 
+  const refreshRole = useCallback(async (): Promise<AppRole | null> => {
+    const userId = activeUserId.current;
+    if (!userId) {
+      setRole(null);
+      setLoading(false);
+      return null;
+    }
+
+    const version = roleLookupVersion.current;
+    roleLoadedForUser.current = null;
+    setLoading(true);
+
+    let promise = roleLookupsByUser.current.get(userId);
+    if (!promise) {
+      promise = fetchRole(userId);
+      roleLookupsByUser.current.set(userId, promise);
+      const clearSettledLookup = () => {
+        if (roleLookupsByUser.current.get(userId) === promise) {
+          roleLookupsByUser.current.delete(userId);
+        }
+      };
+      void promise.then(clearSettledLookup, clearSettledLookup);
+    }
+
+    try {
+      const nextRole = await promise;
+      if (roleLookupVersion.current !== version || activeUserId.current !== userId) return null;
+      roleLoadedForUser.current = userId;
+      setRole(nextRole);
+      return nextRole;
+    } catch (error) {
+      if (roleLookupVersion.current === version && activeUserId.current === userId) {
+        roleLoadedForUser.current = userId;
+        setRole(null);
+      }
+      throw error;
+    } finally {
+      if (roleLookupVersion.current === version && activeUserId.current === userId) {
+        setLoading(false);
+      }
+    }
+  }, []);
+
   async function signOut() {
     await supabase.auth.signOut();
   }
 
   return (
-    <AuthContext.Provider value={{ session, user: session?.user ?? null, role, loading, signOut }}>
+    <AuthContext.Provider
+      value={{ session, user: session?.user ?? null, role, loading, refreshRole, signOut }}
+    >
       {children}
     </AuthContext.Provider>
   );
