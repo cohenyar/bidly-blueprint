@@ -5,8 +5,15 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
 export type OfferRow = Database["public"]["Functions"]["get_supplier_offer"]["Returns"][number];
-export type CustomerOfferRow =
-  Database["public"]["Functions"]["get_customer_request_offers"]["Returns"][number];
+export type CustomerOfferRow = Omit<
+  Database["public"]["Functions"]["get_customer_request_offers"]["Returns"][number],
+  "business_description" | "base_city" | "years_experience"
+> & {
+  business_description: string | null;
+  base_city: string | null;
+  years_experience: number | null;
+};
+
 export type OfferStatus = Database["public"]["Enums"]["offer_status"];
 
 export type SubmitOfferInput = {
