@@ -13,9 +13,10 @@ import {
 
 export const Route = createFileRoute("/register")({
   component: RegisterPage,
-  validateSearch: (search: Record<string, unknown>) => ({
-    oauth: search.oauth === true || search.oauth === "1",
+  validateSearch: (search: Record<string, unknown>): { oauth?: boolean } => ({
+    oauth: search.oauth === true || search.oauth === "1" ? true : undefined,
   }),
+
   head: () => ({
     meta: [
       { title: "הרשמה ל־Bidly — פתחו חשבון לקוח או ספק" },

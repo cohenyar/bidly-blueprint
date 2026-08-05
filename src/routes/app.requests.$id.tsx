@@ -149,7 +149,10 @@ function RequestDetailsPage() {
             {r.delivery_mode === "remote" ? (
               <MetaChip>שירות מרחוק</MetaChip>
             ) : r.service_area ? (
-              <MetaChip>אזור שירות: {r.service_area.name_he}</MetaChip>
+              <MetaChip>
+                אזור שירות: {(r.service_area as { name_he: string }).name_he}
+              </MetaChip>
+
             ) : null}
             <MetaChip>{formatBudget(r)}</MetaChip>
             <MetaChip>פורסמה: {formatDateTime(r.published_at ?? r.created_at)}</MetaChip>
