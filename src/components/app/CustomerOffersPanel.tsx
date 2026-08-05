@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import { Inbox } from "lucide-react";
 
 import { ErrorState, LoadingState, StateCard } from "@/components/app/StateCard";
@@ -8,10 +9,50 @@ import { cn } from "@/lib/utils";
 
 const STATUS_LABEL: Record<CustomerOfferRow["status"], string> = {
   submitted: "ממתינה לבחירה",
-  selected: "נבחרה",
+  selected: "הצעה נבחרה",
   rejected: "לא נבחרה",
   withdrawn: "נמשכה",
 };
+
+export type CustomerOfferSort = "price" | "time" | "newest";
+
+export function sortCustomerOffers(offers: CustomerOfferRow[], sort: CustomerOfferSort) {
+  return [...offers].sort((left, right) => {
+    if (sort === "price") {
+      return (
+        left.price - right.price ||
+        left.estimated_days - right.estimated_days ||
+        Date.parse(right.created_at) - Date.parse(left.created_at)
+      );
+    }
+    if (sort === "time") {
+      return (
+        left.estimated_days - right.estimated_days ||
+        left.price - right.price ||
+        Date.parse(right.created_at) - Date.parse(left.created_at)
+      );
+    }
+    return Date.parse(right.created_at) - Date.parse(left.created_at);
+  });
+}
+
+export function getSubmittedOfferHighlights(offers: CustomerOfferRow[]) {
+  const submitted = offers.filter((offer) => offer.status === "submitted");
+  if (submitted.length < 2) {
+    return { lowestPrice: new Set<string>(), shortestTime: new Set<string>() };
+  }
+
+  const lowestPrice = Math.min(...submitted.map((offer) => offer.price));
+  const shortestTime = Math.min(...submitted.map((offer) => offer.estimated_days));
+  return {
+    lowestPrice: new Set(
+      submitted.filter((offer) => offer.price === lowestPrice).map((offer) => offer.id),
+    ),
+    shortestTime: new Set(
+      submitted.filter((offer) => offer.estimated_days === shortestTime).map((offer) => offer.id),
+    ),
+  };
+}
 
 type Props = {
   isPending: boolean;
@@ -20,6 +61,7 @@ type Props = {
   selectedOfferId: string | null;
   requestStatus: Database["public"]["Enums"]["request_status"];
   selectingOfferId: string | null;
+  selectionPending?: boolean;
   onRetry: () => void;
   onSelect: (offer: CustomerOfferRow) => void;
 };
@@ -31,33 +73,69 @@ export function CustomerOffersPanel({
   selectedOfferId,
   requestStatus,
   selectingOfferId,
+  selectionPending = false,
   onRetry,
   onSelect,
 }: Props) {
-  if (isPending) return <LoadingState label="טוען הצעות…" />;
-  if (error) return <ErrorState error={error} onRetry={onRetry} />;
+  const [sort, setSort] = useState<CustomerOfferSort>("price");
+  const sortedOffers = useMemo(() => sortCustomerOffers(offers, sort), [offers, sort]);
+  const highlights = useMemo(() => getSubmittedOfferHighlights(offers), [offers]);
+
+  if (isPending) return <LoadingState label="טוען הצעות..." />;
+  if (error) {
+    return <ErrorState error={error} onRetry={onRetry} title="לא הצלחנו לטעון את ההצעות" />;
+  }
   if (offers.length === 0) {
     return (
       <StateCard
         icon={<Inbox className="h-5 w-5" strokeWidth={2.25} />}
-        eyebrow="עדיין אין הצעות"
-        title="הצעות מנותני שירות יופיעו כאן."
+        eyebrow="הצעות ספקים"
+        title="עדיין לא התקבלו הצעות לבקשה"
       />
     );
   }
 
   return (
-    <div className="grid gap-4">
-      {offers.map((offer) => (
-        <CustomerOfferCard
-          key={offer.id}
-          offer={offer}
-          selected={selectedOfferId === offer.id}
-          canSelect={requestStatus === "open" && offer.status === "submitted"}
-          selecting={selectingOfferId === offer.id}
-          onSelect={() => onSelect(offer)}
-        />
-      ))}
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <label htmlFor="customer-offer-sort" className="text-[12px] font-semibold text-foreground">
+          מיון הצעות
+        </label>
+        <select
+          id="customer-offer-sort"
+          value={sort}
+          onChange={(event) => setSort(event.target.value as CustomerOfferSort)}
+          className="h-10 rounded-lg border border-input bg-background px-3 text-[13px] font-semibold text-foreground shadow-e1 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15"
+        >
+          <option value="price">המחיר הנמוך ביותר</option>
+          <option value="time">זמן הביצוע הקצר ביותר</option>
+          <option value="newest">החדש ביותר</option>
+        </select>
+      </div>
+      <div className="grid gap-4">
+        {sortedOffers.map((offer) => (
+          <CustomerOfferCard
+            key={offer.id}
+            offer={offer}
+            selected={selectedOfferId === offer.id}
+            canSelect={requestStatus === "open" && offer.status === "submitted" && !selectedOfferId}
+            selecting={selectingOfferId === offer.id}
+            selectionPending={selectionPending}
+            lowestPrice={highlights.lowestPrice.has(offer.id)}
+            shortestTime={highlights.shortestTime.has(offer.id)}
+            onSelect={() => {
+              const price = new Intl.NumberFormat("he-IL").format(offer.price);
+              if (
+                window.confirm(
+                  `האם לבחור בהצעה של ${offer.business_name} במחיר ${price} ₪?\nזמן ביצוע משוער: ${offer.estimated_days} ימים.`,
+                )
+              ) {
+                onSelect(offer);
+              }
+            }}
+          />
+        ))}
+      </div>
     </div>
   );
 }
@@ -67,12 +145,18 @@ export function CustomerOfferCard({
   selected,
   canSelect,
   selecting,
+  selectionPending,
+  lowestPrice,
+  shortestTime,
   onSelect,
 }: {
   offer: CustomerOfferRow;
   selected: boolean;
   canSelect: boolean;
   selecting: boolean;
+  selectionPending: boolean;
+  lowestPrice: boolean;
+  shortestTime: boolean;
   onSelect: () => void;
 }) {
   return (
@@ -85,14 +169,16 @@ export function CustomerOfferCard({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 className="text-[17px] font-bold text-foreground">{offer.business_name}</h3>
-          <p className="mt-1 text-[12px] text-muted-foreground">
-            {[
-              offer.base_city,
-              offer.years_experience === null ? null : `${offer.years_experience} שנות ניסיון`,
-            ]
-              .filter(Boolean)
-              .join(" · ") || "פרטי ניסיון לא נמסרו"}
-          </p>
+          {offer.base_city || offer.years_experience !== null ? (
+            <p className="mt-1 text-[12px] text-muted-foreground">
+              {[
+                offer.base_city,
+                offer.years_experience === null ? null : `${offer.years_experience} שנות ניסיון`,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+            </p>
+          ) : null}
         </div>
         <span
           className={cn(
@@ -100,9 +186,24 @@ export function CustomerOfferCard({
             selected ? "bg-success-soft text-success" : "bg-surface-muted text-muted-foreground",
           )}
         >
-          {STATUS_LABEL[offer.status]}
+          {selected ? "הצעה נבחרה" : STATUS_LABEL[offer.status]}
         </span>
       </div>
+
+      {lowestPrice || shortestTime ? (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {lowestPrice ? (
+            <span className="rounded-full bg-success-soft px-3 py-1 text-[11px] font-semibold text-success">
+              המחיר הנמוך ביותר
+            </span>
+          ) : null}
+          {shortestTime ? (
+            <span className="rounded-full bg-primary/10 px-3 py-1 text-[11px] font-semibold text-primary">
+              הזמן הקצר ביותר
+            </span>
+          ) : null}
+        </div>
+      ) : null}
 
       {offer.business_description ? (
         <p className="mt-4 whitespace-pre-wrap text-[13px] leading-relaxed text-muted-foreground">
@@ -139,7 +240,7 @@ export function CustomerOfferCard({
         {canSelect ? (
           <button
             type="button"
-            disabled={selecting}
+            disabled={selectionPending}
             onClick={onSelect}
             className="inline-flex h-10 items-center justify-center rounded-lg bg-primary px-4 text-[13px] font-semibold text-primary-foreground disabled:opacity-50"
           >

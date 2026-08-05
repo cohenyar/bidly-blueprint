@@ -20,7 +20,9 @@ vi.mock("@/integrations/supabase/client", () => ({
 
 import {
   fetchCustomerRequestOffers,
+  offerSelectionErrorMessage,
   useCustomerRequestOffers,
+  useSelectOffer,
   useSubmitOffer,
   useUpdateSubmittedOffer,
   type CustomerOfferRow,
@@ -182,5 +184,51 @@ describe("customer request offers", () => {
       queryKey: ["customer-request-offers", "request-1"],
     });
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ["request", "request-1"] });
+  });
+
+  it("refreshes Request details, Offers, and Request lists after successful selection", async () => {
+    supabaseMock.rpc.mockResolvedValue({ data: "request-1", error: null });
+    const queryClient = new QueryClient();
+    const invalidate = vi.spyOn(queryClient, "invalidateQueries");
+    const { result } = renderHook(() => useSelectOffer("request-1"), {
+      wrapper: createWrapper(queryClient),
+    });
+
+    await act(async () => {
+      await result.current.mutateAsync("offer-1");
+    });
+
+    expect(supabaseMock.rpc).toHaveBeenCalledWith("select_offer", { _offer_id: "offer-1" });
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ["my-requests"] });
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ["request", "request-1"] });
+    expect(invalidate).toHaveBeenCalledWith({
+      queryKey: ["customer-request-offers", "request-1"],
+    });
+  });
+
+  it("settles on selection failure while preserving the specific Supabase diagnostic", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    supabaseMock.rpc.mockResolvedValue({
+      data: null,
+      error: {
+        code: "42501",
+        message: "Offer not owned by this Request customer",
+        details: "Request owner mismatch",
+        hint: "Verify the authenticated customer",
+      },
+    });
+    const queryClient = new QueryClient();
+    const { result } = renderHook(() => useSelectOffer("request-1"), {
+      wrapper: createWrapper(queryClient),
+    });
+
+    await act(async () => {
+      await expect(result.current.mutateAsync("offer-1")).rejects.toThrow(
+        /42501.*Request owner mismatch.*Verify the authenticated customer/,
+      );
+    });
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.isPending).toBe(false);
+    expect(offerSelectionErrorMessage(result.current.error)).toMatch(/Offer not owned/);
   });
 });

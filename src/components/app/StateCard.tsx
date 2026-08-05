@@ -69,7 +69,15 @@ export function LoadingState({ label = "טוען…" }: { label?: string }) {
   );
 }
 
-export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
+export function ErrorState({
+  error,
+  onRetry,
+  title = "לא הצלחנו לטעון את הנתונים",
+}: {
+  error: unknown;
+  onRetry?: () => void;
+  title?: string;
+}) {
   const message =
     import.meta.env.DEV && error instanceof Error
       ? error.message
@@ -79,7 +87,7 @@ export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () =>
       tone="danger"
       icon={<AlertTriangle className="h-5 w-5" strokeWidth={2.25} />}
       eyebrow="שגיאה"
-      title="לא הצלחנו לטעון את הנתונים"
+      title={title}
       body={<p dir="auto">{message}</p>}
       action={
         onRetry ? (

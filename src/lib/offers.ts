@@ -280,6 +280,46 @@ export function offerSubmissionErrorMessage(error: unknown): string {
   return candidate?.message || "שליחת ההצעה נכשלה. נסו שוב בעוד רגע.";
 }
 
+export function offerSelectionErrorMessage(error: unknown): string {
+  const candidate = error as SupabaseLikeError | null;
+  return candidate?.message || "בחירת ההצעה נכשלה. נסו שוב בעוד רגע.";
+}
+
+function offerSelectionError(error: SupabaseLikeError, requestId: string, offerId: string) {
+  const diagnostic = {
+    operation: "select_offer",
+    requestId,
+    offerId,
+    code: error.code ?? null,
+    message: error.message ?? null,
+    details: error.details ?? null,
+    hint: error.hint ?? null,
+  };
+
+  if (import.meta.env.DEV) console.error("[Offer selection failed]", diagnostic);
+
+  return Object.assign(
+    new Error(
+      [
+        "select_offer failed",
+        error.code ? `code=${error.code}` : null,
+        error.message ? `message=${error.message}` : null,
+        error.details ? `details=${error.details}` : null,
+        error.hint ? `hint=${error.hint}` : null,
+      ]
+        .filter(Boolean)
+        .join(" | "),
+    ),
+    {
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+      requestId,
+      offerId,
+    },
+  );
+}
+
 export function useOwnOffer(requestId: string, supplierId: string | undefined, enabled = true) {
   return useQuery({
     queryKey: ["supplier-own-offer", requestId, supplierId],
@@ -456,7 +496,7 @@ export function useSelectOffer(requestId: string) {
       const { data, error } = await supabase.rpc("select_offer", {
         _offer_id: offerId,
       });
-      if (error) throw error;
+      if (error) throw offerSelectionError(error, requestId, offerId);
       return data;
     },
     onSuccess: () => {

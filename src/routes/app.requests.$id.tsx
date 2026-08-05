@@ -6,7 +6,7 @@ import { CustomerOffersPanel } from "@/components/app/CustomerOffersPanel";
 import { PageContainer } from "@/components/app/PageContainer";
 import { Section } from "@/components/app/Section";
 import { ErrorState, LoadingState, StateCard } from "@/components/app/StateCard";
-import { useCustomerRequestOffers, useSelectOffer } from "@/lib/offers";
+import { offerSelectionErrorMessage, useCustomerRequestOffers, useSelectOffer } from "@/lib/offers";
 import { useRequestAnswerReview } from "@/lib/request-questionnaire";
 import {
   canCancelPublishedRequest,
@@ -105,6 +105,8 @@ function RequestDetailsPage() {
       </PageContainer>
     );
   }
+  const effectiveSelectedOfferId =
+    r.selected_offer_id ?? (selectOffer.isSuccess ? (selectOffer.variables ?? null) : null);
 
   const tone = REQUEST_STATUS_TONE[r.status];
   const toneClass =
@@ -203,19 +205,23 @@ function RequestDetailsPage() {
                 isPending={offersQuery.isPending}
                 error={offersQuery.isError ? offersQuery.error : null}
                 offers={offersQuery.data ?? []}
-                selectedOfferId={r.selected_offer_id}
+                selectedOfferId={effectiveSelectedOfferId}
                 requestStatus={r.status}
                 selectingOfferId={selectOffer.isPending ? (selectOffer.variables ?? null) : null}
+                selectionPending={selectOffer.isPending}
                 onRetry={() => void offersQuery.refetch()}
                 onSelect={(offer) => {
-                  if (window.confirm(`לבחור בהצעה של ${offer.business_name}? הבחירה סופית.`)) {
-                    void selectOffer.mutateAsync(offer.id);
-                  }
+                  void selectOffer.mutateAsync(offer.id);
                 }}
               />
+              {selectOffer.isSuccess ? (
+                <p role="status" className="mt-3 text-[12px] font-semibold text-success">
+                  ההצעה נבחרה בהצלחה
+                </p>
+              ) : null}
               {selectOffer.isError ? (
                 <p role="alert" className="mt-3 text-[12px] text-danger">
-                  בחירת ההצעה נכשלה. ייתכן שהבקשה או ההצעה כבר השתנו.
+                  {offerSelectionErrorMessage(selectOffer.error)}
                 </p>
               ) : null}
             </Section>
