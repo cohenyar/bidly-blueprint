@@ -4,7 +4,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
-export type OfferRow = Database["public"]["Functions"]["get_supplier_offer"]["Returns"][number];
+export type OfferRow = Omit<
+  Database["public"]["Functions"]["get_supplier_offer"]["Returns"][number],
+  "withdrawn_at"
+> & { withdrawn_at: string | null };
+
 export type CustomerOfferRow = Omit<
   Database["public"]["Functions"]["get_customer_request_offers"]["Returns"][number],
   "business_description" | "base_city" | "years_experience"
