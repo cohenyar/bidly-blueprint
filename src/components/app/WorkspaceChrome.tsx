@@ -1,10 +1,10 @@
-import type { ReactNode } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { LogOut } from "lucide-react";
 
 import { BidlyLogo } from "@/components/app/BidlyLogo";
 import { NotificationsBell } from "@/components/app/NotificationsBell";
 import { PageContainer } from "@/components/app/PageContainer";
+import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
 
@@ -14,63 +14,95 @@ const ROLE_LABEL: Record<string, string> = {
   admin: "מנהל מערכת",
 };
 
-export function WorkspaceHeader({
-  extra,
-  homeTo = "/app",
-}: {
-  extra?: ReactNode;
-  homeTo?: "/app" | "/supplier";
-}) {
+type WorkspaceRole = "customer" | "supplier";
+
+const CUSTOMER_NAVIGATION = [
+  { to: "/app", label: "אזור אישי", exact: true },
+  { to: "/app/requests", label: "הבקשות שלי", exact: true },
+  { to: "/app/requests/new", label: "בקשה חדשה", exact: true },
+] as const;
+
+const SUPPLIER_NAVIGATION = [
+  { to: "/supplier", label: "מרחב עבודה", exact: true },
+  { to: "/supplier/requests", label: "בקשות מותאמות", exact: true },
+  { to: "/supplier/profile", label: "פרופיל", exact: true },
+] as const;
+
+export function WorkspaceHeader({ homeTo = "/app" }: { homeTo?: "/app" | "/supplier" }) {
   const navigate = useNavigate();
   const { role, signOut } = useAuth();
   const roleLabel = role ? ROLE_LABEL[role] : "משתמש";
+  const workspaceRole: WorkspaceRole = role === "supplier" ? "supplier" : "customer";
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur">
       <PageContainer>
-        <div className="grid h-14 grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
-          <div className="flex min-w-0 items-center gap-3">
-            <Link
-              to={homeTo}
-              className="inline-flex focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 rounded-md"
-            >
-              <BidlyLogo />
-            </Link>
-            <span aria-hidden className="hidden h-4 w-px bg-border sm:inline-block" />
-            <Link
-              to={homeTo}
-              activeOptions={{ exact: true }}
-              className="hidden truncate rounded-md px-1.5 py-1 text-[12px] font-semibold uppercase tracking-[0.14em] text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 sm:inline-block"
-              activeProps={{ className: "bg-accent text-foreground" }}
-            >
-              מרחב עבודה
-            </Link>
-            {extra}
-          </div>
-          <div className="flex items-center gap-2">
+        <div className="flex min-h-14 flex-wrap items-center justify-between gap-x-4">
+          <Link
+            to={homeTo}
+            aria-label="Bidly — דף הבית"
+            className="order-1 inline-flex rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <BidlyLogo />
+          </Link>
+
+          <WorkspaceNavigation
+            role={workspaceRole}
+            className="order-3 w-full overflow-x-auto border-t border-border py-2 md:order-2 md:w-auto md:border-t-0 md:py-0"
+          />
+
+          <div className="order-2 flex items-center gap-2 md:order-3">
             <span className="hidden rounded-full border border-border bg-surface px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground sm:inline-flex">
               {roleLabel}
             </span>
             <NotificationsBell
               requestRoute={role === "supplier" ? "/supplier/requests/$id" : "/app/requests/$id"}
             />
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="sm"
+              aria-label="התנתקות"
               onClick={() => {
                 void signOut().then(() => navigate({ to: "/" }));
               }}
-              className={cn(
-                "inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-transparent px-3 text-[13px] font-semibold text-foreground transition-colors hover:border-border-strong hover:bg-accent",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-              )}
             >
               <LogOut className="h-3.5 w-3.5" />
-              <span>התנתקות</span>
-            </button>
+              <span className="hidden sm:inline">התנתקות</span>
+            </Button>
           </div>
         </div>
       </PageContainer>
     </header>
+  );
+}
+
+export function WorkspaceNavigation({
+  role,
+  className,
+}: {
+  role: WorkspaceRole;
+  className?: string;
+}) {
+  const items = role === "supplier" ? SUPPLIER_NAVIGATION : CUSTOMER_NAVIGATION;
+
+  return (
+    <nav
+      aria-label={role === "supplier" ? "ניווט נותן שירות" : "ניווט לקוח"}
+      className={cn("flex items-center gap-1", className)}
+    >
+      {items.map((item) => (
+        <Link
+          key={item.to}
+          to={item.to}
+          activeOptions={{ exact: item.exact }}
+          className="shrink-0 rounded-lg px-3 py-2 text-[12px] font-semibold text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          activeProps={{ className: "bg-accent text-foreground" }}
+        >
+          {item.label}
+        </Link>
+      ))}
+    </nav>
   );
 }
 

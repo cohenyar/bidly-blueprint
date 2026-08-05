@@ -43,6 +43,14 @@ vi.mock("@tanstack/react-router", () => ({
 
 vi.mock("@/components/app/WorkspaceChrome", () => ({
   WorkspaceHeader: () => null,
+  WorkspaceNavigation: () => (
+    <nav aria-label="ניווט נותן שירות">
+      <a href="/supplier/requests" aria-current="page" className="bg-accent text-foreground">
+        בקשות מותאמות
+      </a>
+      <a href="/supplier/profile">פרופיל</a>
+    </nav>
+  ),
   WorkspaceSkeleton: () => null,
 }));
 

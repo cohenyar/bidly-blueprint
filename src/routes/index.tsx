@@ -23,6 +23,8 @@ import { TimelineIndicator } from "@/components/app/TimelineIndicator";
 import { OfferCard } from "@/components/app/OfferCard";
 import { RequestCard } from "@/components/app/RequestCard";
 import { HeroProductMock } from "@/components/app/HeroProductMock";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({
   component: LandingPage,
@@ -60,11 +62,20 @@ function SiteHeader() {
         <div className="flex h-14 items-center justify-between">
           <BidlyLogo />
           <nav className="flex items-center gap-2">
-            <Link to="/login" className={ctaClasses("ghost", "sm")}>
+            <Link to="/login" className={buttonVariants({ variant: "quiet", size: "sm" })}>
               כניסה
             </Link>
-            <Link to="/register" className={ctaClasses("primary", "sm")}>
-              פתיחת חשבון
+            <Link
+              to="/register"
+              className={cn(
+                buttonVariants({ variant: "quiet", size: "sm" }),
+                "hidden sm:inline-flex",
+              )}
+            >
+              הרשמה
+            </Link>
+            <Link to="/register" className={buttonVariants({ size: "sm" })}>
+              פרסום בקשה
             </Link>
           </nav>
         </div>
@@ -96,21 +107,15 @@ function Hero() {
               <span className="text-primary">קבלו הצעות מהמובילים.</span>
             </h1>
             <p className="mt-5 max-w-[44ch] text-[15px] leading-relaxed text-muted-foreground sm:text-base">
-              במקום לרדוף אחרי הצעות מחיר — בעלי מקצוע מובחרים שולחים לכם הצעות
-              פרטיות, ואתם בוחרים את המתאים ביותר.
+              במקום לרדוף אחרי הצעות מחיר — בעלי מקצוע מובחרים שולחים לכם הצעות פרטיות, ואתם בוחרים
+              את המתאים ביותר.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-              <Link
-                to="/register"
-                className={ctaClasses("primary", "lg") + " w-full sm:w-auto"}
-              >
+              <Link to="/register" className={ctaClasses("primary", "lg") + " w-full sm:w-auto"}>
                 אני מקבל שירות
                 <ArrowLeft className="h-4 w-4" />
               </Link>
-              <Link
-                to="/register"
-                className={ctaClasses("ghost", "lg") + " w-full sm:w-auto"}
-              >
+              <Link to="/register" className={ctaClasses("ghost", "lg") + " w-full sm:w-auto"}>
                 אני בעל מקצוע
               </Link>
             </div>
@@ -122,7 +127,6 @@ function Hero() {
               <StatPill icon={<Lock />} label="הצעות פרטיות" />
             </div>
           </div>
-
 
           {/* Product mock — 7 cols on lg. Visually dominant. */}
           <div className="lg:col-span-7">
@@ -147,7 +151,7 @@ function StoryStep1() {
         <div className="max-w-md">
           <RequestCard
             category="שיפוצים"
-            title='שיפוץ משרד 120 מ״ר בתל אביב'
+            title="שיפוץ משרד 120 מ״ר בתל אביב"
             body="חיפוי גבס, צביעה, החלפת רצפה, החלפת תאורה. סיום עד סוף הרבעון."
             chips={
               <>
@@ -229,9 +233,7 @@ function StoryStep3() {
             actions={
               <>
                 <span className="text-xs font-semibold text-ai">קבל המלצה</span>
-                <span className="text-xs text-muted-foreground">
-                  ערוך · התעלם
-                </span>
+                <span className="text-xs text-muted-foreground">ערוך · התעלם</span>
               </>
             }
           />
@@ -305,15 +307,9 @@ function StorySection({
     <section className={`border-b border-border ${bg}`}>
       <PageContainer>
         <div className="grid gap-10 py-16 lg:grid-cols-12 lg:items-center lg:gap-12 lg:py-24">
-          <div
-            className={`lg:col-span-5 ${
-              isEnd ? "lg:order-1" : "lg:order-2"
-            }`}
-          >
+          <div className={`lg:col-span-5 ${isEnd ? "lg:order-1" : "lg:order-2"}`}>
             <div className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.16em] text-primary">
-              <span className="tabular-nums">
-                {String(index + 1).padStart(2, "0")}
-              </span>
+              <span className="tabular-nums">{String(index + 1).padStart(2, "0")}</span>
               <span className="h-px w-8 bg-primary/40" />
               {eyebrow.replace(/^שלב \d\d · /, "")}
             </div>
@@ -324,11 +320,7 @@ function StorySection({
               {body}
             </p>
           </div>
-          <div
-            className={`lg:col-span-7 ${
-              isEnd ? "lg:order-2" : "lg:order-1"
-            }`}
-          >
+          <div className={`lg:col-span-7 ${isEnd ? "lg:order-2" : "lg:order-1"}`}>
             <div className={isEnd ? "lg:ps-8" : "lg:pe-8"}>{visual}</div>
           </div>
         </div>
@@ -396,7 +388,6 @@ function TrustTile({
     </div>
   );
 }
-
 
 /* ─────────────────────── Two sides ─────────────────────── */
 
@@ -476,24 +467,15 @@ function SideCard({
         {points.map((p) => (
           <li key={p} className="flex items-start gap-3 text-sm">
             <BadgeCheck
-              className={`mt-0.5 h-4 w-4 shrink-0 ${
-                dark ? "text-success" : "text-success"
-              }`}
+              className={`mt-0.5 h-4 w-4 shrink-0 ${dark ? "text-success" : "text-success"}`}
               strokeWidth={2.5}
             />
-            <span
-              className={dark ? "text-primary-foreground/90" : "text-foreground"}
-            >
-              {p}
-            </span>
+            <span className={dark ? "text-primary-foreground/90" : "text-foreground"}>{p}</span>
           </li>
         ))}
       </ul>
       <div className="mt-6">
-        <Link
-          to="/register"
-          className={ctaClasses(dark ? "onPrimary" : "primary", "md")}
-        >
+        <Link to="/register" className={ctaClasses(dark ? "onPrimary" : "primary", "md")}>
           {cta}
           <ArrowLeft className="h-4 w-4" />
         </Link>
@@ -520,8 +502,7 @@ function ClosingCta() {
                 <span className="text-primary">להתחרות עליכם.</span>
               </h2>
               <p className="mt-4 max-w-[46ch] text-[15px] text-muted-foreground">
-                פתיחת חשבון תוך דקה. הבקשה הראשונה נשלחת חינם — כמו כל הבקשות
-                אחריה.
+                פתיחת חשבון תוך דקה. הבקשה הראשונה נשלחת חינם — כמו כל הבקשות אחריה.
               </p>
               <div className="mt-6 flex flex-wrap items-center gap-3">
                 <Link to="/register" className={ctaClasses("primary", "lg")}>
@@ -605,12 +586,10 @@ function ctaClasses(variant: CtaVariant, size: CtaSize): string {
         ? "h-10 px-4 text-sm"
         : "h-9 px-3.5 text-[13px]";
   const variantClasses: Record<CtaVariant, string> = {
-    primary:
-      "bg-primary text-primary-foreground hover:bg-primary-hover shadow-e1",
+    primary: "bg-primary text-primary-foreground hover:bg-primary-hover shadow-e1",
     ghost:
       "bg-transparent text-foreground border border-border hover:border-border-strong hover:bg-accent",
-    onPrimary:
-      "bg-primary-foreground text-primary hover:bg-primary-foreground/90",
+    onPrimary: "bg-primary-foreground text-primary hover:bg-primary-foreground/90",
   };
   return `inline-flex items-center gap-2 justify-center rounded-lg font-semibold transition-colors ${sizeClasses} ${variantClasses[variant]}`;
 }

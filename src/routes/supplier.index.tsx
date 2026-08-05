@@ -1,13 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { BriefcaseBusiness, CheckCircle2 } from "lucide-react";
 
+import { PageHeader } from "@/components/app/PageHeader";
 import { PageContainer } from "@/components/app/PageContainer";
 import { DashboardProfileCompletionPanel } from "@/components/app/ProfileCompletionPanel";
 import { ErrorState, LoadingState } from "@/components/app/StateCard";
 import { SupplierEnhancementNotice } from "@/components/app/SupplierEnhancementNotice";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import {
   computeCompletion,
-  isSupplierProfileComplete,
   useCategoriesForSupplier,
   useMySupplierCategories,
   useMySupplierProfessionSelections,
@@ -132,25 +134,22 @@ function SupplierDashboardPage() {
     },
   );
   const matches = matchesQuery.data ?? [];
-  const isComplete = isSupplierProfileComplete(completion);
 
   return (
     <PageContainer>
       <div className="py-10 sm:py-14">
-        <div className="request-spine-navy ps-5">
-          <span className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.18em] text-primary">
-            <span className="h-px w-6 bg-primary" aria-hidden />
-            מרחב נותן שירות
-          </span>
-          <h1 className="mt-3 text-[28px] font-bold leading-tight tracking-[-0.01em] text-foreground sm:text-[34px]">
-            הבקשות שמתאימות לעסק שלכם.
-          </h1>
-          <p className="mt-2 max-w-[58ch] text-[14px] leading-relaxed text-muted-foreground sm:text-[15px]">
-            כאן תמצאו רק בקשות עם התאמה פעילה לתחומים שבחרתם, ותוכלו לעיין בפרטים ולשלוח הצעה פרטית.
-          </p>
-        </div>
+        <PageHeader
+          eyebrow="מרחב נותן שירות"
+          title="העבודה שמתאימה לעסק שלכם."
+          subtitle="עקבו אחר התאמות פעילות, השלימו את הפרופיל ועברו לבקשות שבהן תוכלו להגיש הצעה פרטית."
+          action={
+            <Button asChild size="lg" className="w-full sm:w-auto">
+              <Link to="/supplier/requests">צפייה בבקשות המותאמות</Link>
+            </Button>
+          }
+        />
 
-        <div className="mt-10">
+        <div className="mt-8 sm:mt-10">
           {loading ? (
             <LoadingState label="טוען את מרחב נותן השירות…" />
           ) : error ? (
@@ -158,7 +157,7 @@ function SupplierDashboardPage() {
           ) : (
             <div className="space-y-10">
               <SupplierEnhancementNotice />
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-3 sm:grid-cols-2">
                 <SummaryCard
                   icon={<BriefcaseBusiness className="h-5 w-5" />}
                   label="התאמות פעילות"
@@ -178,23 +177,6 @@ function SupplierDashboardPage() {
               </div>
 
               <DashboardProfileCompletionPanel status={completion} />
-
-              <div className="flex flex-wrap justify-end gap-3">
-                {!isComplete ? (
-                  <Link
-                    to="/supplier/profile"
-                    className="inline-flex h-10 items-center justify-center rounded-lg border border-border bg-surface px-4 text-[13px] font-semibold text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-                  >
-                    עריכת פרופיל
-                  </Link>
-                ) : null}
-                <Link
-                  to="/supplier/requests"
-                  className="inline-flex h-10 items-center justify-center rounded-lg bg-primary px-4 text-[13px] font-semibold text-primary-foreground shadow-e1 hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-                >
-                  צפייה בבקשות המותאמות
-                </Link>
-              </div>
             </div>
           )}
         </div>
@@ -215,7 +197,7 @@ function SummaryCard({
   detail: string;
 }) {
   return (
-    <div className="rounded-2xl border border-border bg-surface p-5 shadow-e1">
+    <Card variant="metric" className="p-5">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
@@ -226,10 +208,10 @@ function SummaryCard({
           </p>
           <p className="mt-2 text-[12px] text-muted-foreground">{detail}</p>
         </div>
-        <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-surface-muted text-primary">
+        <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-surface-muted text-primary">
           {icon}
         </span>
       </div>
-    </div>
+    </Card>
   );
 }

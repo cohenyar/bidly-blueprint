@@ -1,6 +1,8 @@
 import { Link } from "@tanstack/react-router";
 import { Check, Circle } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { isSupplierProfileComplete, type CompletionStatus } from "@/lib/supplier-profile";
 import { cn } from "@/lib/utils";
 
@@ -13,7 +15,7 @@ export function ProfileCompletionPanel({ status }: { status: CompletionStatus })
   const complete = status.percent === 100;
 
   return (
-    <div className="rounded-2xl border border-border bg-surface p-6 shadow-e1 sm:p-8">
+    <Card variant="status" className="p-6 sm:p-7">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">
@@ -67,14 +69,12 @@ export function ProfileCompletionPanel({ status }: { status: CompletionStatus })
       </ul>
 
       <div className="mt-5">
-        <Link
-          to="/supplier/profile"
-          aria-label="חזרה להשלמת הפרופיל"
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-[13px] font-semibold text-primary-foreground shadow-e1 hover:bg-primary-hover"
-        >
-          חזרה להשלמת הפרופיל
-        </Link>
+        <Button asChild>
+          <Link to="/supplier/profile" aria-label="חזרה להשלמת הפרופיל">
+            חזרה להשלמת הפרופיל
+          </Link>
+        </Button>
       </div>
-    </div>
+    </Card>
   );
 }

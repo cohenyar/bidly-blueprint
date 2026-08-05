@@ -1,7 +1,11 @@
-import { createFileRoute, Link, Outlet, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 
-import { WorkspaceHeader, WorkspaceSkeleton } from "@/components/app/WorkspaceChrome";
+import {
+  WorkspaceHeader,
+  WorkspaceNavigation,
+  WorkspaceSkeleton,
+} from "@/components/app/WorkspaceChrome";
 import { useAuth } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/supplier")({
@@ -31,7 +35,7 @@ function SupplierLayout() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <WorkspaceHeader homeTo="/supplier" extra={<SupplierNavigation />} />
+      <WorkspaceHeader homeTo="/supplier" />
       <main>
         <Outlet />
       </main>
@@ -40,23 +44,5 @@ function SupplierLayout() {
 }
 
 export function SupplierNavigation() {
-  return (
-    <nav aria-label="ניווט נותן שירות" className="hidden items-center gap-1 md:flex">
-      <Link
-        to="/supplier/requests"
-        activeOptions={{ exact: true }}
-        className="rounded-md px-2.5 py-1.5 text-[12px] font-semibold text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-        activeProps={{ className: "bg-accent text-foreground" }}
-      >
-        בקשות מותאמות
-      </Link>
-      <Link
-        to="/supplier/profile"
-        className="rounded-md px-2.5 py-1.5 text-[12px] font-semibold text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-        activeProps={{ className: "bg-accent text-foreground" }}
-      >
-        פרופיל
-      </Link>
-    </nav>
-  );
+  return <WorkspaceNavigation role="supplier" />;
 }

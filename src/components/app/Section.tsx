@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 export function Section({
   eyebrow,
   title,
+  description,
   action,
   children,
   className,
@@ -17,6 +18,7 @@ export function Section({
 }: {
   eyebrow?: string;
   title?: ReactNode;
+  description?: ReactNode;
   action?: ReactNode;
   children?: ReactNode;
   className?: string;
@@ -24,25 +26,54 @@ export function Section({
 }) {
   return (
     <section className={cn("w-full", className)}>
-      {(eyebrow || title || action) && (
-        <header
-          className={cn(
-            "flex items-end justify-between gap-4 border-b border-border pb-4 mb-6",
-            headerClassName,
-          )}
-        >
-          <div className="min-w-0">
-            {eyebrow && (
-              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground mb-2">
-                {eyebrow}
-              </div>
-            )}
-            {title && <h2 className="text-2xl font-bold text-foreground leading-tight">{title}</h2>}
-          </div>
-          {action && <div className="shrink-0">{action}</div>}
-        </header>
+      {(eyebrow || title || description || action) && (
+        <SectionHeader
+          eyebrow={eyebrow}
+          title={title}
+          description={description}
+          action={action}
+          className={headerClassName}
+        />
       )}
       {children}
     </section>
+  );
+}
+
+export function SectionHeader({
+  eyebrow,
+  title,
+  description,
+  action,
+  className,
+}: {
+  eyebrow?: string;
+  title?: ReactNode;
+  description?: ReactNode;
+  action?: ReactNode;
+  className?: string;
+}) {
+  return (
+    <header
+      className={cn(
+        "mb-5 flex flex-col gap-3 border-b border-border pb-4 sm:flex-row sm:items-end sm:justify-between",
+        className,
+      )}
+    >
+      <div className="min-w-0">
+        {eyebrow ? (
+          <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            {eyebrow}
+          </p>
+        ) : null}
+        {title ? (
+          <h2 className="text-xl font-bold leading-tight text-foreground">{title}</h2>
+        ) : null}
+        {description ? (
+          <div className="mt-1 text-[13px] leading-5 text-muted-foreground">{description}</div>
+        ) : null}
+      </div>
+      {action ? <div className="flex shrink-0 flex-wrap items-center gap-2">{action}</div> : null}
+    </header>
   );
 }

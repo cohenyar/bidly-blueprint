@@ -4,6 +4,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const navigationMock = vi.hoisted(() => vi.fn());
 const routeState = vi.hoisted(() => ({ current: "/supplier" }));
+const authState = vi.hoisted(() => ({
+  current: { role: "supplier" as "customer" | "supplier", signOut: vi.fn() },
+}));
 
 vi.mock("@tanstack/react-router", () => ({
   Link: ({
@@ -51,7 +54,7 @@ vi.mock("@/components/app/PageContainer", () => ({
 }));
 
 vi.mock("@/lib/auth-context", () => ({
-  useAuth: () => ({ role: "supplier", signOut: vi.fn() }),
+  useAuth: () => authState.current,
 }));
 
 import { WorkspaceHeader } from "./WorkspaceChrome";
@@ -61,6 +64,7 @@ describe("WorkspaceHeader", () => {
     cleanup();
     navigationMock.mockReset();
     routeState.current = "/supplier";
+    authState.current = { role: "supplier", signOut: vi.fn() };
   });
 
   it("links the workspace item to the existing supplier dashboard", () => {
@@ -88,5 +92,36 @@ describe("WorkspaceHeader", () => {
 
     expect(link.getAttribute("aria-current")).toBeNull();
     expect(link.className).not.toMatch(/(?:^|\s)bg-accent(?:\s|$)/);
+  });
+
+  it("keeps customer and supplier navigation separated", () => {
+    authState.current = { role: "customer", signOut: vi.fn() };
+    routeState.current = "/app";
+    const { rerender } = render(<WorkspaceHeader />);
+
+    expect(screen.getByRole("navigation", { name: "ניווט לקוח" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "הבקשות שלי" })).toBeTruthy();
+    expect(screen.queryByRole("link", { name: "בקשות מותאמות" })).toBeNull();
+
+    authState.current = { role: "supplier", signOut: vi.fn() };
+    routeState.current = "/supplier";
+    rerender(<WorkspaceHeader homeTo="/supplier" />);
+
+    expect(screen.getByRole("navigation", { name: "ניווט נותן שירות" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "בקשות מותאמות" })).toBeTruthy();
+    expect(screen.queryByRole("link", { name: "הבקשות שלי" })).toBeNull();
+  });
+
+  it("keeps the complete role navigation visible in the mobile header", () => {
+    render(
+      <div style={{ width: 320 }}>
+        <WorkspaceHeader homeTo="/supplier" />
+      </div>,
+    );
+
+    const navigation = screen.getByRole("navigation", { name: "ניווט נותן שירות" });
+    expect(navigation.className).toContain("w-full");
+    expect(navigation.className).not.toContain("hidden");
+    expect(screen.getByRole("link", { name: "פרופיל" })).toBeTruthy();
   });
 });
