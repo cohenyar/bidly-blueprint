@@ -9,6 +9,8 @@ import { ErrorState, LoadingState, StateCard } from "@/components/app/StateCard"
 import { useCustomerRequestOffers, useSelectOffer } from "@/lib/offers";
 import { useRequestAnswerReview } from "@/lib/request-questionnaire";
 import {
+  canCancelPublishedRequest,
+  cancelRequestErrorMessage,
   formatBudget,
   REQUEST_STATUS_LABEL,
   REQUEST_STATUS_TONE,
@@ -225,7 +227,7 @@ function RequestDetailsPage() {
                 פעולות
               </h4>
               <div className="mt-4 space-y-2">
-                {r.status === "open" ? (
+                {canCancelPublishedRequest(r) ? (
                   <button
                     type="button"
                     disabled={cancel.isPending}
@@ -252,9 +254,14 @@ function RequestDetailsPage() {
                 ) : (
                   <p className="text-[12px] text-muted-foreground">הבקשה נמצאת במצב סופי.</p>
                 )}
+                {cancel.isSuccess ? (
+                  <p role="status" className="text-[12px] font-semibold text-success">
+                    הבקשה בוטלה בהצלחה
+                  </p>
+                ) : null}
                 {cancel.isError ? (
                   <p role="alert" className="text-[12px] text-danger">
-                    ביטול הבקשה נכשל. נסו שוב בעוד רגע.
+                    {cancelRequestErrorMessage(cancel.error)}
                   </p>
                 ) : null}
                 {close.isError ? (

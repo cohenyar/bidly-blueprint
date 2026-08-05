@@ -13,6 +13,13 @@ export type BudgetType = Database["public"]["Enums"]["budget_type"];
 export type RequestStatus = Database["public"]["Enums"]["request_status"];
 export type RequestDeliveryMode = "on_site" | "remote";
 
+type SupabaseRequestActionError = {
+  code?: string;
+  message?: string;
+  details?: string;
+  hint?: string;
+};
+
 export type RequestWithCategory = RequestRow & {
   category: Pick<CategoryRow, "id" | "slug" | "name_he"> | null;
   subcategory: Pick<SubcategoryRow, "id" | "slug" | "name_he"> | null;
@@ -48,6 +55,64 @@ export const REQUEST_STATUS_TONE: Record<
   closed: "muted",
   cancelled: "danger",
 };
+
+export function canCancelPublishedRequest(request: Pick<RequestRow, "status" | "published_at">) {
+  return request.status === "open" && request.published_at !== null;
+}
+
+export function cancelRequestErrorMessage(error: unknown) {
+  const candidate = error as SupabaseRequestActionError | null;
+  const code = candidate?.code ?? "";
+  const message = candidate?.message ?? "";
+  const normalized = message.toLowerCase();
+
+  if (code === "PGRST202") return "פעולת ביטול הבקשה אינה זמינה כרגע.";
+  if (code === "42501" || normalized.includes("not found")) {
+    return "אין הרשאה לבטל את הבקשה הזו.";
+  }
+  if (code === "22000" || normalized.includes("published open")) {
+    return "ניתן לבטל רק בקשה שפורסמה ועדיין פתוחה.";
+  }
+  return message || "ביטול הבקשה נכשל. נסו שוב בעוד רגע.";
+}
+
+function requestActionError(
+  operation: "cancel_request",
+  requestId: string,
+  error: SupabaseRequestActionError,
+) {
+  const diagnostic = {
+    operation,
+    requestId,
+    code: error.code ?? null,
+    message: error.message ?? null,
+    details: error.details ?? null,
+    hint: error.hint ?? null,
+  };
+
+  if (import.meta.env.DEV) console.error("[Request lifecycle action failed]", diagnostic);
+
+  return Object.assign(
+    new Error(
+      [
+        `${operation} failed`,
+        error.code ? `code=${error.code}` : null,
+        error.message ? `message=${error.message}` : null,
+        error.details ? `details=${error.details}` : null,
+        error.hint ? `hint=${error.hint}` : null,
+      ]
+        .filter(Boolean)
+        .join(" | "),
+    ),
+    {
+      operation,
+      requestId,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+    },
+  );
+}
 
 // Restore the service_area embed after migrations 7–10 add requests.service_area_id.
 export const REQUEST_PROJECTION =
@@ -566,7 +631,7 @@ export function useCancelRequest() {
       const { data, error } = await supabase.rpc("cancel_request", {
         _request_id: id,
       });
-      if (error) throw error;
+      if (error) throw requestActionError("cancel_request", id, error);
       return data;
     },
     onSuccess: (_result, id) => {

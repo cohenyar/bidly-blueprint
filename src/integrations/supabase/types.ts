@@ -869,6 +869,7 @@ export type Database = {
         }[];
       };
       can_submit_offer: { Args: { _request_id: string }; Returns: boolean };
+      cancel_request: { Args: { _request_id: string }; Returns: string };
       get_customer_request_offers: {
         Args: { _request_id: string };
         Returns: {
@@ -977,6 +978,15 @@ export type Database = {
         Returns: string;
       };
       submit_supplier_onboarding: { Args: never; Returns: boolean };
+      update_submitted_offer: {
+        Args: {
+          _estimated_days: number;
+          _message: string | null;
+          _offer_id: string;
+          _price: number;
+        };
+        Returns: string;
+      };
       withdraw_offer: { Args: { _offer_id: string }; Returns: string };
     };
     Enums: {

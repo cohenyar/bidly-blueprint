@@ -22,6 +22,7 @@ import {
   fetchCustomerRequestOffers,
   useCustomerRequestOffers,
   useSubmitOffer,
+  useUpdateSubmittedOffer,
   type CustomerOfferRow,
 } from "./offers";
 
@@ -149,5 +150,37 @@ describe("customer request offers", () => {
     expect(invalidate).toHaveBeenCalledWith({
       queryKey: ["customer-request-offers", "request-1"],
     });
+  });
+
+  it("updates the existing Offer row and invalidates Supplier and Customer projections", async () => {
+    supabaseMock.rpc.mockResolvedValue({ data: "offer-1", error: null });
+    const queryClient = new QueryClient();
+    const invalidate = vi.spyOn(queryClient, "invalidateQueries");
+    const { result } = renderHook(() => useUpdateSubmittedOffer("request-1"), {
+      wrapper: createWrapper(queryClient),
+    });
+
+    await act(async () => {
+      await result.current.mutateAsync({
+        offerId: "offer-1",
+        price: 1400,
+        estimated_days: 4,
+        message: "פרטים מתוקנים",
+      });
+    });
+
+    expect(supabaseMock.rpc).toHaveBeenCalledWith("update_submitted_offer", {
+      _offer_id: "offer-1",
+      _price: 1400,
+      _estimated_days: 4,
+      _message: "פרטים מתוקנים",
+    });
+    expect(invalidate).toHaveBeenCalledWith({
+      queryKey: ["supplier-own-offer", "request-1"],
+    });
+    expect(invalidate).toHaveBeenCalledWith({
+      queryKey: ["customer-request-offers", "request-1"],
+    });
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ["request", "request-1"] });
   });
 });

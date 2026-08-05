@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  canEditSubmittedOffer,
   canShowSupplierOfferAction,
   toSubmitOfferInput,
   validateOfferForm,
@@ -75,5 +76,31 @@ describe("supplier offer action visibility", () => {
     ["supplier with an existing Offer", { hasExistingOffer: true }],
   ])("is hidden for %s", (_scenario, overrides) => {
     expect(canShowSupplierOfferAction({ ...visibleOffer, ...overrides })).toBe(false);
+  });
+});
+
+describe("submitted Offer edit visibility", () => {
+  const editable = {
+    isSupplier: true,
+    isOwnOffer: true,
+    hasActiveMatch: true,
+    requestStatus: "open" as const,
+    offerStatus: "submitted" as const,
+  };
+
+  it("allows the owning matched Supplier to edit a submitted Offer on an open Request", () => {
+    expect(canEditSubmittedOffer(editable)).toBe(true);
+  });
+
+  it.each([
+    ["customer", { isSupplier: false }],
+    ["unrelated Supplier", { isOwnOffer: false }],
+    ["inactive Match", { hasActiveMatch: false }],
+    ["awarded Request", { requestStatus: "awarded" as const }],
+    ["withdrawn Offer", { offerStatus: "withdrawn" as const }],
+    ["selected Offer", { offerStatus: "selected" as const }],
+    ["rejected Offer", { offerStatus: "rejected" as const }],
+  ])("blocks editing for %s", (_label, override) => {
+    expect(canEditSubmittedOffer({ ...editable, ...override })).toBe(false);
   });
 });

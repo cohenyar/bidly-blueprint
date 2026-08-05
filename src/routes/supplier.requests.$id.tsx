@@ -12,7 +12,7 @@ import {
 } from "@/components/app/SupplierOfferPanel";
 import { SupplierRequestAttachments } from "@/components/app/SupplierRequestAttachments";
 import { useAuth } from "@/lib/auth-context";
-import { canShowSupplierOfferAction, useOwnOffer } from "@/lib/offers";
+import { canEditSubmittedOffer, canShowSupplierOfferAction, useOwnOffer } from "@/lib/offers";
 import { formatDateTime } from "@/lib/i18n";
 import { formatBudget } from "@/lib/requests";
 import { useActiveMatchedRequest } from "@/lib/supplier-requests";
@@ -28,7 +28,9 @@ function SupplierRequestDetailsPage() {
   const requestQuery = useActiveMatchedRequest(id);
   const ownOfferQuery = useOwnOffer(id, user?.id);
   const [offerSubmitted, setOfferSubmitted] = useState(false);
+  const [offerUpdated, setOfferUpdated] = useState(false);
   const [offerFormOpen, setOfferFormOpen] = useState(false);
+  const [offerEditOpen, setOfferEditOpen] = useState(false);
 
   if (requestQuery.isPending) {
     return (
@@ -144,6 +146,15 @@ function SupplierRequestDetailsPage() {
     requestStatus: request.status,
     hasExistingOffer: Boolean(ownOfferQuery.data) || offerSubmitted,
   });
+  const canEditOffer = ownOfferQuery.data
+    ? canEditSubmittedOffer({
+        isSupplier: role === "supplier",
+        isOwnOffer: Boolean(user?.id),
+        hasActiveMatch: request.match_status === "active",
+        requestStatus: request.status,
+        offerStatus: ownOfferQuery.data.status,
+      })
+    : false;
 
   return (
     <PageContainer>
@@ -240,6 +251,15 @@ function SupplierRequestDetailsPage() {
                   ההצעה נשלחה בהצלחה
                 </div>
               ) : null}
+              {offerUpdated ? (
+                <div
+                  role="status"
+                  className="mb-4 flex items-start gap-2 rounded-xl border border-success/30 bg-success-soft p-4 text-[13px] text-success"
+                >
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+                  ההצעה עודכנה בהצלחה
+                </div>
+              ) : null}
 
               {ownOfferQuery.isPending ? (
                 <LoadingState label="בודק אם כבר שלחתם הצעה…" />
@@ -266,8 +286,25 @@ function SupplierRequestDetailsPage() {
                   }
                   className="p-6 sm:p-7"
                 />
+              ) : ownOfferQuery.data && offerEditOpen && canEditOffer ? (
+                <SupplierOfferForm
+                  requestId={request.id}
+                  initialOffer={ownOfferQuery.data}
+                  onSubmitted={() => {
+                    setOfferUpdated(true);
+                    setOfferEditOpen(false);
+                  }}
+                />
               ) : ownOfferQuery.data ? (
-                <SupplierOwnOffer offer={ownOfferQuery.data} canWithdraw />
+                <SupplierOwnOffer
+                  offer={ownOfferQuery.data}
+                  canWithdraw={canEditOffer}
+                  canEdit={canEditOffer}
+                  onEdit={() => {
+                    setOfferUpdated(false);
+                    setOfferEditOpen(true);
+                  }}
+                />
               ) : request.status !== "open" ? (
                 <StateCard
                   icon={<Inbox className="h-5 w-5" />}

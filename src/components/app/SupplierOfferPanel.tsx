@@ -5,6 +5,7 @@ import {
   offerSubmissionErrorMessage,
   toSubmitOfferInput,
   useSubmitOffer,
+  useUpdateSubmittedOffer,
   useWithdrawOffer,
   validateOfferForm,
   type OfferRow,
@@ -39,9 +40,13 @@ export function SupplierOfferPrompt({ onOpen }: { onOpen: () => void }) {
 export function SupplierOwnOffer({
   offer,
   canWithdraw = false,
+  canEdit = false,
+  onEdit,
 }: {
   offer: OfferRow;
   canWithdraw?: boolean;
+  canEdit?: boolean;
+  onEdit?: () => void;
 }) {
   const positive = offer.status === "selected";
   const withdraw = useWithdrawOffer(offer.request_id);
@@ -99,20 +104,34 @@ export function SupplierOwnOffer({
       <p className="mt-4 text-[11px] text-muted-foreground">
         נשלחה ב־{formatDateTime(offer.created_at)}
       </p>
-      {canWithdraw && offer.status === "submitted" ? (
+      {(canWithdraw || canEdit) && offer.status === "submitted" ? (
         <div className="mt-5 border-t border-border pt-4">
-          <button
-            type="button"
-            disabled={withdraw.isPending}
-            onClick={() => {
-              if (window.confirm("למשוך את ההצעה? לא ניתן יהיה לשלוח אותה מחדש.")) {
-                void withdraw.mutateAsync(offer.id);
-              }
-            }}
-            className="inline-flex h-10 items-center justify-center rounded-lg border border-border px-4 text-[13px] font-semibold text-foreground hover:border-danger hover:text-danger disabled:opacity-50"
-          >
-            {withdraw.isPending ? "מושך…" : "משיכת ההצעה"}
-          </button>
+          <div className="flex flex-wrap gap-2">
+            {canEdit && onEdit ? (
+              <button
+                type="button"
+                disabled={withdraw.isPending}
+                onClick={onEdit}
+                className="inline-flex h-10 items-center justify-center rounded-lg border border-border px-4 text-[13px] font-semibold text-foreground hover:border-primary hover:text-primary disabled:opacity-50"
+              >
+                שינוי הצעה
+              </button>
+            ) : null}
+            {canWithdraw ? (
+              <button
+                type="button"
+                disabled={withdraw.isPending}
+                onClick={() => {
+                  if (window.confirm("למשוך את ההצעה? לא ניתן יהיה לשלוח אותה מחדש.")) {
+                    void withdraw.mutateAsync(offer.id);
+                  }
+                }}
+                className="inline-flex h-10 items-center justify-center rounded-lg border border-border px-4 text-[13px] font-semibold text-foreground hover:border-danger hover:text-danger disabled:opacity-50"
+              >
+                {withdraw.isPending ? "מושך…" : "משיכת ההצעה"}
+              </button>
+            ) : null}
+          </div>
           {withdraw.isError ? (
             <p role="alert" className="mt-2 text-[12px] text-danger">
               משיכת ההצעה נכשלה. ייתכן שהבקשה או ההתאמה כבר אינן פעילות.
@@ -127,14 +146,21 @@ export function SupplierOwnOffer({
 export function SupplierOfferForm({
   requestId,
   onSubmitted,
+  initialOffer,
 }: {
   requestId: string;
   onSubmitted: () => void;
+  initialOffer?: OfferRow;
 }) {
   const submitOffer = useSubmitOffer(requestId);
-  const [price, setPrice] = useState("");
-  const [estimatedDays, setEstimatedDays] = useState("");
-  const [message, setMessage] = useState("");
+  const updateOffer = useUpdateSubmittedOffer(requestId);
+  const isEditing = Boolean(initialOffer);
+  const isPending = submitOffer.isPending || updateOffer.isPending;
+  const [price, setPrice] = useState(initialOffer ? String(initialOffer.price) : "");
+  const [estimatedDays, setEstimatedDays] = useState(
+    initialOffer ? String(initialOffer.estimated_days) : "",
+  );
+  const [message, setMessage] = useState(initialOffer?.message ?? "");
   const [errors, setErrors] = useState<OfferValidationErrors>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -151,7 +177,12 @@ export function SupplierOfferForm({
     if (Object.keys(nextErrors).length > 0) return;
 
     try {
-      await submitOffer.mutateAsync(toSubmitOfferInput(values));
+      const input = toSubmitOfferInput(values);
+      if (initialOffer) {
+        await updateOffer.mutateAsync({ ...input, offerId: initialOffer.id });
+      } else {
+        await submitOffer.mutateAsync(input);
+      }
       onSubmitted();
     } catch (error) {
       setSubmitError(offerSubmissionErrorMessage(error));
@@ -168,9 +199,13 @@ export function SupplierOfferForm({
       noValidate
     >
       <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-primary">הצעה לבקשה</p>
-      <h3 className="mt-1 text-[20px] font-bold text-foreground">שליחת הצעה פרטית</h3>
+      <h3 className="mt-1 text-[20px] font-bold text-foreground">
+        {isEditing ? "שינוי ההצעה" : "שליחת הצעה פרטית"}
+      </h3>
       <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">
-        מלאו מחיר, זמן ביצוע משוער והודעה ללקוח. לאחר השליחה לא ניתן לשלוח הצעה נוספת.
+        {isEditing
+          ? "עדכנו את המחיר, זמן הביצוע המשוער ופירוט ההצעה הקיימת."
+          : "מלאו מחיר, זמן ביצוע משוער והודעה ללקוח. לאחר השליחה לא ניתן לשלוח הצעה נוספת."}
       </p>
 
       <div className="mt-6 grid gap-5 sm:grid-cols-2">
@@ -188,7 +223,7 @@ export function SupplierOfferForm({
             value={price}
             onChange={(event) => setPrice(event.target.value)}
             className={inputClass}
-            disabled={submitOffer.isPending}
+            disabled={isPending}
             aria-invalid={Boolean(errors.price)}
             aria-describedby={errors.price ? "offer-price-error" : undefined}
             required
@@ -214,7 +249,7 @@ export function SupplierOfferForm({
             value={estimatedDays}
             onChange={(event) => setEstimatedDays(event.target.value)}
             className={inputClass}
-            disabled={submitOffer.isPending}
+            disabled={isPending}
             aria-invalid={Boolean(errors.estimated_days)}
             aria-describedby={errors.estimated_days ? "offer-days-error" : undefined}
             required
@@ -242,7 +277,7 @@ export function SupplierOfferForm({
             maxLength={2000}
             rows={7}
             dir="auto"
-            disabled={submitOffer.isPending}
+            disabled={isPending}
             aria-invalid={Boolean(errors.message)}
             aria-describedby={errors.message ? "offer-message-error" : "offer-message-help"}
             className="mt-1.5 block w-full resize-y rounded-lg border border-input bg-background px-3.5 py-3 text-[14px] leading-relaxed text-foreground shadow-e1 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15 disabled:opacity-60"
@@ -269,11 +304,11 @@ export function SupplierOfferForm({
 
       <button
         type="submit"
-        disabled={submitOffer.isPending}
+        disabled={isPending}
         className="mt-6 inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-primary px-5 text-[14px] font-semibold text-primary-foreground shadow-e1 hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
       >
         <Send className="h-4 w-4" />
-        {submitOffer.isPending ? "שולח את ההצעה…" : "שליחת ההצעה"}
+        {isPending ? "שומר…" : isEditing ? "שמירת השינויים" : "שליחת ההצעה"}
       </button>
     </form>
   );

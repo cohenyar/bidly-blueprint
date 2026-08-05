@@ -15,6 +15,10 @@ export type SubmitOfferInput = {
   message: string;
 };
 
+export type UpdateSubmittedOfferInput = SubmitOfferInput & {
+  offerId: string;
+};
+
 export type OfferValidationErrors = Partial<Record<keyof SubmitOfferInput, string>>;
 
 export type OfferFormValues = {
@@ -29,6 +33,14 @@ export type SupplierOfferVisibility = {
   canViewRequest: boolean;
   requestStatus: Database["public"]["Enums"]["request_status"];
   hasExistingOffer: boolean;
+};
+
+export type SubmittedOfferEditVisibility = {
+  isSupplier: boolean;
+  isOwnOffer: boolean;
+  hasActiveMatch: boolean;
+  requestStatus: Database["public"]["Enums"]["request_status"];
+  offerStatus: OfferStatus;
 };
 
 export function canShowSupplierOfferAction({
@@ -304,6 +316,55 @@ export function useSubmitOffer(requestId: string) {
       void queryClient.invalidateQueries({
         queryKey: ["customer-request-offers", requestId],
       });
+    },
+  });
+}
+
+export function canEditSubmittedOffer({
+  isSupplier,
+  isOwnOffer,
+  hasActiveMatch,
+  requestStatus,
+  offerStatus,
+}: SubmittedOfferEditVisibility) {
+  return (
+    isSupplier &&
+    isOwnOffer &&
+    hasActiveMatch &&
+    requestStatus === "open" &&
+    offerStatus === "submitted"
+  );
+}
+
+export function useUpdateSubmittedOffer(requestId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: UpdateSubmittedOfferInput): Promise<string> => {
+      const errors = validateOffer(input);
+      if (Object.keys(errors).length > 0) {
+        throw new Error("Invalid offer input");
+      }
+
+      const { data, error } = await supabase.rpc("update_submitted_offer", {
+        _offer_id: input.offerId,
+        _price: input.price,
+        _estimated_days: input.estimated_days,
+        _message: input.message.trim(),
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({
+        queryKey: ["supplier-own-offer", requestId],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["supplier-matched-request", requestId],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["customer-request-offers", requestId],
+      });
+      void queryClient.invalidateQueries({ queryKey: ["request", requestId] });
     },
   });
 }

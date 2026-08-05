@@ -4,12 +4,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { OfferRow } from "@/lib/offers";
 
 const mutateAsync = vi.fn();
+const updateMutateAsync = vi.fn();
 
 vi.mock("@/lib/offers", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/offers")>();
   return {
     ...actual,
     useSubmitOffer: () => ({ isPending: false, mutateAsync }),
+    useUpdateSubmittedOffer: () => ({ isPending: false, mutateAsync: updateMutateAsync }),
     useWithdrawOffer: () => ({ isPending: false, isError: false, mutateAsync: vi.fn() }),
   };
 });
@@ -41,6 +43,8 @@ describe("SupplierOfferPanel", () => {
   beforeEach(() => {
     mutateAsync.mockReset();
     mutateAsync.mockResolvedValue("offer-1");
+    updateMutateAsync.mockReset();
+    updateMutateAsync.mockResolvedValue("offer-1");
   });
 
   it("shows a clear primary action before opening the form", () => {
@@ -121,5 +125,45 @@ describe("SupplierOfferPanel", () => {
     render(<SupplierOwnOffer offer={{ ...submittedOffer, message: "" }} />);
 
     expect(screen.queryByText("פירוט ההצעה")).toBeNull();
+  });
+
+  it("shows edit next to withdrawal only when editing is authorized", () => {
+    const onEdit = vi.fn();
+    render(<SupplierOwnOffer offer={submittedOffer} canEdit canWithdraw onEdit={onEdit} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "שינוי הצעה" }));
+    expect(onEdit).toHaveBeenCalledOnce();
+    expect(screen.getByRole("button", { name: "משיכת ההצעה" })).toBeTruthy();
+  });
+
+  it("preloads and updates the existing Offer instead of creating another", async () => {
+    const onSubmitted = vi.fn();
+    render(
+      <SupplierOfferForm
+        requestId="request-1"
+        initialOffer={submittedOffer}
+        onSubmitted={onSubmitted}
+      />,
+    );
+
+    expect((screen.getByLabelText(/הערכת מחיר/) as HTMLInputElement).value).toBe("1250");
+    expect((screen.getByLabelText(/זמן משוער/) as HTMLInputElement).value).toBe("3");
+    expect((screen.getByLabelText(/פירוט ההצעה/) as HTMLTextAreaElement).value).toBe(
+      submittedOffer.message,
+    );
+
+    fireEvent.change(screen.getByLabelText(/הערכת מחיר/), { target: { value: "1350" } });
+    fireEvent.click(screen.getByRole("button", { name: "שמירת השינויים" }));
+
+    await waitFor(() =>
+      expect(updateMutateAsync).toHaveBeenCalledWith({
+        offerId: "offer-1",
+        price: 1350,
+        estimated_days: 3,
+        message: submittedOffer.message,
+      }),
+    );
+    expect(mutateAsync).not.toHaveBeenCalled();
+    expect(onSubmitted).toHaveBeenCalledOnce();
   });
 });
