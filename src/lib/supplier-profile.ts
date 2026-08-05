@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { isPortfolioStoragePath, isValidHttpsPortfolioUrl } from "@/lib/supplier-portfolio";
+import { useActiveCategories } from "@/lib/taxonomy";
 
 export type SupplierProfileRow = Database["public"]["Tables"]["supplier_profiles"]["Row"];
 export type SupplierOnboardingState =
@@ -197,19 +198,7 @@ export function useSaveSupplierProfile() {
 }
 
 export function useCategoriesForSupplier() {
-  return useQuery({
-    queryKey: ["categories", "supplier-onboarding"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("categories")
-        .select("*")
-        .eq("is_active", true)
-        .order("sort_order")
-        .order("name_he");
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
+  return useActiveCategories();
 }
 
 export function useProfessionsForSupplier() {

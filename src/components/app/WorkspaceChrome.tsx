@@ -43,7 +43,7 @@ export function WorkspaceHeader({ homeTo = "/app" }: { homeTo?: "/app" | "/suppl
             aria-label="Bidly — דף הבית"
             className="order-1 inline-flex rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <BidlyLogo />
+            <BidlyLogo compactOnMobile />
           </Link>
 
           <WorkspaceNavigation

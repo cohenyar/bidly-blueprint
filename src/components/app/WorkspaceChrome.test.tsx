@@ -41,10 +41,6 @@ vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => vi.fn(),
 }));
 
-vi.mock("@/components/app/BidlyLogo", () => ({
-  BidlyLogo: () => <span>Bidly</span>,
-}));
-
 vi.mock("@/components/app/NotificationsBell", () => ({
   NotificationsBell: () => null,
 }));
@@ -74,6 +70,19 @@ describe("WorkspaceHeader", () => {
     expect(link.getAttribute("href")).toBe("/supplier");
     fireEvent.click(link);
     expect(navigationMock).toHaveBeenCalledWith("/supplier");
+  });
+
+  it("keeps the logo link pointed at the correct role dashboard", () => {
+    const { rerender } = render(<WorkspaceHeader homeTo="/supplier" />);
+    const supplierLogoLink = screen.getByRole("link", { name: "Bidly — דף הבית" });
+    expect(supplierLogoLink.getAttribute("href")).toBe("/supplier");
+    expect(supplierLogoLink.querySelector("svg")).toBeTruthy();
+
+    authState.current = { role: "customer", signOut: vi.fn() };
+    rerender(<WorkspaceHeader />);
+    const customerLogoLink = screen.getByRole("link", { name: "Bidly — דף הבית" });
+    expect(customerLogoLink.getAttribute("href")).toBe("/app");
+    expect(customerLogoLink.querySelector("svg")).toBeTruthy();
   });
 
   it("preserves the active workspace navigation styling", () => {

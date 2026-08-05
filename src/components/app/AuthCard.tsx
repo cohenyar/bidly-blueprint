@@ -30,8 +30,12 @@ export function AuthShell({
       <header className="sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur">
         <PageContainer>
           <div className="flex h-14 items-center justify-between">
-            <Link to="/" className="inline-flex">
-              <BidlyLogo />
+            <Link
+              to="/"
+              aria-label="Bidly — דף הבית"
+              className="inline-flex rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <BidlyLogo compactOnMobile />
             </Link>
             <Link
               to="/"
@@ -59,17 +63,13 @@ export function AuthShell({
                 {title}
               </h1>
               {subtitle ? (
-                <p className="mt-2 text-[14px] leading-relaxed text-muted-foreground">
-                  {subtitle}
-                </p>
+                <p className="mt-2 text-[14px] leading-relaxed text-muted-foreground">{subtitle}</p>
               ) : null}
               <div className="mt-8">{children}</div>
             </div>
 
             {footer ? (
-              <p className="mt-6 text-center text-[13px] text-muted-foreground">
-                {footer}
-              </p>
+              <p className="mt-6 text-center text-[13px] text-muted-foreground">{footer}</p>
             ) : null}
 
             <p className="mt-8 text-center text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/80">
@@ -105,11 +105,7 @@ export function AuthField({
         {label}
       </span>
       {children}
-      {hint ? (
-        <span className="mt-1.5 block text-[12px] text-muted-foreground">
-          {hint}
-        </span>
-      ) : null}
+      {hint ? <span className="mt-1.5 block text-[12px] text-muted-foreground">{hint}</span> : null}
     </label>
   );
 }
