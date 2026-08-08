@@ -33,6 +33,10 @@ vi.mock("@/components/app/SupplierProfileForm", () => ({
   SupplierProfileForm: () => <div data-testid="supplier-profile-form" />,
 }));
 
+vi.mock("@/components/app/SupplierProfileOverview", () => ({
+  SupplierProfileOverview: () => <div data-testid="supplier-profile-overview" />,
+}));
+
 import { SupplierProfilePage } from "@/routes/supplier.profile";
 
 describe("Supplier profile route navigation", () => {
@@ -49,6 +53,7 @@ describe("Supplier profile route navigation", () => {
     expect(action.getAttribute("href")).toBe("/supplier");
     expect(action.closest("[dir='rtl']")).toBeTruthy();
     expect(action.className).not.toContain("hidden");
+    expect(screen.getByTestId("supplier-profile-overview")).toBeTruthy();
     expect(screen.getByTestId("supplier-profile-form")).toBeTruthy();
 
     fireEvent.click(action);

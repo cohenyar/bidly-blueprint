@@ -21,6 +21,7 @@ const offer: CustomerOfferRow = {
   business_description: "תיאור העסק",
   base_city: "חיפה",
   years_experience: 5,
+  portfolio_links: ["https://portfolio.example/work"],
 };
 
 const cheaperSlower: CustomerOfferRow = {
@@ -73,6 +74,9 @@ describe("CustomerOffersPanel", () => {
     expect(screen.getByText("3 ימים")).toBeTruthy();
     expect(screen.getByText(/חיפה.*5 שנות ניסיון/)).toBeTruthy();
     expect(screen.getByText("תיאור העסק")).toBeTruthy();
+    const portfolioLink = screen.getByRole("link", { name: /קישור חיצוני/ });
+    expect(portfolioLink.getAttribute("target")).toBe("_blank");
+    expect(portfolioLink.getAttribute("rel")).toBe("noopener noreferrer");
     expect(screen.getByLabelText("פירוט ההצעה")).toBeTruthy();
     expect(screen.getByText("ממתינה לבחירה")).toBeTruthy();
   });
@@ -131,6 +135,7 @@ describe("CustomerOffersPanel", () => {
             business_description: null,
             base_city: null,
             years_experience: null,
+            portfolio_links: [],
           },
         ]}
       />,

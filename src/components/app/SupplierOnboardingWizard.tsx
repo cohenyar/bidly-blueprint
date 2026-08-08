@@ -325,7 +325,7 @@ export function SupplierOnboardingWizard() {
       if (!(await persistStage(stage))) return;
       await saveStage.mutateAsync(nextStage);
       setStage(nextStage);
-      setSavedMessage("השלב נשמר.");
+      setSavedMessage("הפרופיל נשמר בהצלחה");
     } catch {
       setStageError("השמירה נכשלה. הפרטים נשארו במסך; נסו שוב בעוד רגע.");
     }

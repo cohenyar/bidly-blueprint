@@ -40,6 +40,7 @@ const offer: CustomerOfferRow = {
   business_description: null,
   base_city: "חיפה",
   years_experience: 5,
+  portfolio_links: [],
 };
 
 function createWrapper(queryClient: QueryClient) {

@@ -449,7 +449,14 @@ export async function fetchCustomerRequestOffers(requestId: string): Promise<Cus
     _request_id: requestId,
   });
 
-  if (!rpcResult.error) return rpcResult.data ?? [];
+  if (!rpcResult.error) {
+    // Keep the UI compatible while the additive portfolio projection migration
+    // is pending on a managed backend that still returns the previous RPC shape.
+    return (rpcResult.data ?? []).map((offer) => ({
+      ...offer,
+      portfolio_links: offer.portfolio_links ?? [],
+    }));
+  }
 
   if (rpcResult.error.code !== "PGRST202") {
     throw customerOfferLookupError("get_customer_request_offers", rpcResult.error, requestId);
@@ -488,6 +495,7 @@ export async function fetchCustomerRequestOffers(requestId: string): Promise<Cus
     business_description: null,
     base_city: null,
     years_experience: null,
+    portfolio_links: [],
   })) as CustomerOfferRow[];
 }
 

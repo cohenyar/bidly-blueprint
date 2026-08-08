@@ -941,6 +941,7 @@ export type Database = {
           estimated_days: number
           id: string
           message: string
+          portfolio_links: string[]
           price: number
           request_id: string
           status: Database["public"]["Enums"]["offer_status"]

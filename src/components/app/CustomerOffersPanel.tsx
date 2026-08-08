@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Inbox } from "lucide-react";
 
 import { ErrorState, LoadingState, StateCard } from "@/components/app/StateCard";
+import { SupplierPortfolioGallery } from "@/components/app/SupplierPortfolioGallery";
 import { formatCurrency, formatDateTime } from "@/lib/i18n";
 import type { CustomerOfferRow } from "@/lib/offers";
 import type { Database } from "@/integrations/supabase/types";
@@ -209,6 +210,13 @@ export function CustomerOfferCard({
         <p className="mt-4 whitespace-pre-wrap text-[13px] leading-relaxed text-muted-foreground">
           {offer.business_description}
         </p>
+      ) : null}
+
+      {offer.portfolio_links?.length ? (
+        <section aria-label="תיק העבודות של נותן השירות" className="mt-4">
+          <p className="mb-2 text-[12px] font-semibold text-foreground">תיק עבודות</p>
+          <SupplierPortfolioGallery items={offer.portfolio_links} limit={3} />
+        </section>
       ) : null}
 
       <dl className="mt-5 grid gap-3 sm:grid-cols-2">

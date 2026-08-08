@@ -3,6 +3,7 @@ import { ArrowRight } from "lucide-react";
 
 import { PageContainer } from "@/components/app/PageContainer";
 import { SupplierProfileForm } from "@/components/app/SupplierProfileForm";
+import { SupplierProfileOverview } from "@/components/app/SupplierProfileOverview";
 
 export const Route = createFileRoute("/supplier/profile")({
   component: SupplierProfilePage,
@@ -36,8 +37,24 @@ export function SupplierProfilePage() {
         </div>
 
         <div className="mt-8">
-          <SupplierProfileForm />
+          <SupplierProfileOverview />
         </div>
+
+        <section
+          id="profile-editor"
+          aria-labelledby="profile-editor-title"
+          className="mt-10 scroll-mt-20"
+        >
+          <div className="mb-5 border-b border-border pb-4">
+            <h2 id="profile-editor-title" className="text-[20px] font-bold text-foreground">
+              עריכת הפרופיל
+            </h2>
+            <p className="mt-1 text-[13px] text-muted-foreground">
+              עדכנו את הפרטים הקיימים לפי שלבי הפרופיל. כל מידע שכבר נשמר נטען אוטומטית.
+            </p>
+          </div>
+          <SupplierProfileForm />
+        </section>
       </div>
     </PageContainer>
   );
