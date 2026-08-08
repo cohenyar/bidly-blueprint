@@ -9,6 +9,51 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
 export type NotificationRow = Database["public"]["Tables"]["notifications"]["Row"];
+export type NotificationType = Database["public"]["Enums"]["notification_type"];
+
+const NOTIFICATION_COPY: Record<NotificationType, { title: string; description: string }> = {
+  offer_received: {
+    title: "התקבלה הצעה חדשה",
+    description: "נותן שירות שלח הצעה לבקשה שלך",
+  },
+  request_awarded: {
+    title: "הצעה נבחרה",
+    description: "בחירת ההצעה לבקשה שלך נשמרה בהצלחה",
+  },
+  request_cancelled: {
+    title: "הבקשה בוטלה",
+    description: "הבקשה שלך בוטלה",
+  },
+  request_closed: {
+    title: "הבקשה נסגרה",
+    description: "הבקשה שלך נסגרה",
+  },
+  match_created: {
+    title: "בקשה חדשה מתאימה לך",
+    description: "נמצאה בקשה שמתאימה לפרופיל שלך",
+  },
+  offer_selected: {
+    title: "ההצעה שלך נבחרה",
+    description: "הלקוח בחר בהצעה שלך",
+  },
+  offer_rejected: {
+    title: "ההצעה שלך לא נבחרה",
+    description: "הלקוח בחר בהצעה אחרת",
+  },
+  offer_withdrawn: {
+    title: "הצעה נמשכה",
+    description: "נותן השירות משך את ההצעה שלו",
+  },
+};
+
+export function getNotificationPresentation(notification: NotificationRow) {
+  const copy = NOTIFICATION_COPY[notification.type];
+  return {
+    title: copy.title,
+    description: notification.body?.trim() || copy.description,
+  };
+}
+
 export function useNotifications() {
   return useQuery({
     queryKey: ["notifications"],
@@ -20,6 +65,22 @@ export function useNotifications() {
         .limit(50);
       if (error) throw error;
       return (data ?? []) as NotificationRow[];
+    },
+    refetchOnWindowFocus: true,
+    refetchInterval: 60_000,
+  });
+}
+
+export function useUnreadNotificationsCount() {
+  return useQuery({
+    queryKey: ["notifications", "unread-count"],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("notifications")
+        .select("id", { count: "exact", head: true })
+        .is("read_at", null);
+      if (error) throw error;
+      return count ?? 0;
     },
     refetchOnWindowFocus: true,
     refetchInterval: 60_000,

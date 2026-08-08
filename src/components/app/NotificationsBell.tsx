@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Bell, CheckCheck } from "lucide-react";
+import { ArrowLeft, Bell, CheckCheck, RotateCcw } from "lucide-react";
 
 import {
+  getNotificationPresentation,
   useMarkAllRead,
   useMarkNotificationRead,
   useNotifications,
   useNotificationsRealtime,
+  useUnreadNotificationsCount,
   type NotificationRow,
 } from "@/lib/notifications";
 import { formatDateTime } from "@/lib/i18n";
@@ -19,13 +21,15 @@ export function NotificationsBell({
 }) {
   useNotificationsRealtime();
   const q = useNotifications();
+  const unreadQuery = useUnreadNotificationsCount();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const markOne = useMarkNotificationRead();
   const markAll = useMarkAllRead();
 
   const items = q.data ?? [];
-  const unread = items.filter((n) => !n.read_at).length;
+  const visibleUnread = items.filter((notification) => !notification.read_at).length;
+  const unread = unreadQuery.data ?? visibleUnread;
 
   useEffect(() => {
     function onClick(e: MouseEvent) {
@@ -59,7 +63,8 @@ export function NotificationsBell({
         <div
           role="dialog"
           aria-label="מרכז התראות"
-          className="absolute end-0 mt-2 w-[340px] max-w-[calc(100vw-1rem)] overflow-hidden rounded-xl border border-border bg-surface shadow-e2"
+          dir="rtl"
+          className="fixed inset-x-2 top-14 z-50 overflow-hidden rounded-xl border border-border bg-surface shadow-e2 sm:absolute sm:inset-x-auto sm:top-auto sm:mt-2 sm:w-[340px]"
         >
           <div className="flex items-center justify-between border-b border-border px-4 py-3">
             <div>
@@ -71,20 +76,36 @@ export function NotificationsBell({
             {unread > 0 ? (
               <button
                 type="button"
+                disabled={markAll.isPending}
                 onClick={() => markAll.mutate()}
-                className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-semibold text-primary hover:bg-accent"
+                className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-semibold text-primary hover:bg-accent disabled:opacity-60"
               >
                 <CheckCheck className="h-3.5 w-3.5" />
-                סמן הכל כנקרא
+                סימון הכל כנקרא
               </button>
             ) : null}
           </div>
 
           <div className="max-h-[380px] overflow-auto">
             {q.isPending ? (
-              <p className="p-6 text-center text-[12px] text-muted-foreground">טוען…</p>
+              <p className="p-6 text-center text-[12px] text-muted-foreground">טוען התראות...</p>
+            ) : q.error ? (
+              <div role="alert" className="p-5 text-center">
+                <p className="text-[12px] font-semibold text-danger">לא הצלחנו לטעון את ההתראות</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    void q.refetch();
+                    void unreadQuery.refetch();
+                  }}
+                  className="mt-3 inline-flex items-center gap-1 rounded-md px-3 py-1.5 text-[11px] font-semibold text-primary hover:bg-accent"
+                >
+                  <RotateCcw className="h-3.5 w-3.5" aria-hidden />
+                  ניסיון חוזר
+                </button>
+              </div>
             ) : items.length === 0 ? (
-              <p className="p-6 text-center text-[12px] text-muted-foreground">אין התראות עדיין.</p>
+              <p className="p-6 text-center text-[12px] text-muted-foreground">אין התראות חדשות</p>
             ) : (
               <ul>
                 {items.map((n) => (
@@ -116,8 +137,13 @@ function NotificationItem({
   onMarkRead: () => void;
   requestRoute: "/app/requests/$id" | "/supplier/requests/$id";
 }) {
+  const presentation = getNotificationPresentation(n);
+  const hasSafeRequestLink = Boolean(
+    n.request_id && (requestRoute === "/app/requests/$id" || n.type === "match_created"),
+  );
   const inner = (
     <div
+      data-unread={!n.read_at || undefined}
       className={cn(
         "flex items-start gap-3 border-b border-border px-4 py-3 last:border-b-0",
         !n.read_at && "bg-primary/5",
@@ -131,16 +157,22 @@ function NotificationItem({
         aria-hidden
       />
       <div className="min-w-0 flex-1">
-        <p className="truncate text-[13px] font-semibold text-foreground">{n.title}</p>
-        {n.body ? (
-          <p className="mt-0.5 line-clamp-2 text-[12px] text-muted-foreground">{n.body}</p>
-        ) : null}
+        <p className="truncate text-[13px] font-semibold text-foreground">{presentation.title}</p>
+        <p className="mt-0.5 line-clamp-2 text-[12px] text-muted-foreground">
+          {presentation.description}
+        </p>
         <p className="mt-1 text-[11px] text-muted-foreground">{formatDateTime(n.created_at)}</p>
+        {hasSafeRequestLink ? (
+          <span className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-semibold text-primary">
+            צפייה בבקשה
+            <ArrowLeft className="h-3 w-3" aria-hidden />
+          </span>
+        ) : null}
       </div>
     </div>
   );
 
-  if (n.request_id) {
+  if (n.request_id && hasSafeRequestLink) {
     return (
       <li>
         <Link
